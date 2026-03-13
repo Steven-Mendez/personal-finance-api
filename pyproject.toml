@@ -9,11 +9,21 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "pytest-socket>=0.7.0",
 ]
 
 [tool.pytest.ini_options]
 markers = [
     "integration: tests that exercise app wiring and external boundaries",
-    "e2e: tests that run against a deployed/running service",
+    "e2e: tests that exercise HTTP-to-response behavior with in-process clients",
 ]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

@@ -1,13 +1,10 @@
-.PHONY: help sync run test test-unit test-integration test-e2e test-all
+.PHONY: help sync run test test-unit test-integration test-e2e test-all test-cov
 
 APP_HOST ?= 127.0.0.1
 APP_PORT ?= 8000
 APP_ENTRYPOINT ?= main.py
-LOCAL_E2E_BASE_URL = http://localhost:$(APP_PORT)
-E2E_BASE_URL ?= $(LOCAL_E2E_BASE_URL)
 UV ?= uv
 UV_RUN ?= $(UV) run
-SCRIPT_DIR ?= scripts
 SYNC_FLAGS ?= --all-groups
 PYTEST_FLAGS ?= -ra --strict-markers --maxfail=1
 TEST_ARGS ?= -v
@@ -27,7 +24,8 @@ help:
 	printf "%s%sPersonal Finance API - Makefile help%s\n\n" "$$BOLD" "$$BLUE" "$$RESET"; \
 	printf "%sOverview%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  Use this Makefile for setup, local run, and test workflows.\n"; \
-	printf "  e2e targets can auto-start the local API when E2E_BASE_URL is localhost.\n\n"; \
+	printf "  E2E tests run in-process via FastAPI TestClient fixtures.\n"; \
+	printf "  test-e2e and test-all invoke pytest directly (no wrapper scripts).\n\n"; \
 	printf "%sCommands%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  %smake sync%s\n" "$$GREEN" "$$RESET"; \
 	printf "      Install or update dependencies (%suv sync %s%s)\n" "$$YELLOW" "$(SYNC_FLAGS)" "$$RESET"; \
@@ -40,18 +38,19 @@ help:
 	printf "  %smake test-integration%s\n" "$$GREEN" "$$RESET"; \
 	printf "      Run integration tests only\n"; \
 	printf "  %smake test-e2e%s\n" "$$GREEN" "$$RESET"; \
-	printf "      Run e2e tests via %s%s/test_e2e.sh%s\n" "$$YELLOW" "$(SCRIPT_DIR)" "$$RESET"; \
+	printf "      Run E2E tests only\n"; \
 	printf "  %smake test-all%s\n" "$$GREEN" "$$RESET"; \
-	printf "      Run full test suite via %s%s/test_all.sh%s\n\n" "$$YELLOW" "$(SCRIPT_DIR)" "$$RESET"; \
+	printf "      Run full test suite (unit + integration + E2E)\n"; \
+	printf "  %smake test-cov%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Run full test suite with coverage report\n\n"; \
 	printf "%sVariable overrides%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  APP_ENTRYPOINT='%s'  FastAPI entrypoint used by make run\n" "$(APP_ENTRYPOINT)"; \
-	printf "  APP_HOST='%s'        Host used by make run and local auto-start\n" "$(APP_HOST)"; \
-	printf "  APP_PORT='%s'        Port used by make run and local auto-start\n" "$(APP_PORT)"; \
+	printf "  APP_HOST='%s'        Host used by make run\n" "$(APP_HOST)"; \
+	printf "  APP_PORT='%s'        Port used by make run\n" "$(APP_PORT)"; \
 	printf "  PYTEST_FLAGS='%s'  Base pytest flags\n" "$(PYTEST_FLAGS)"; \
 	printf "  TEST_ARGS='%s'       Extra args for test, test-unit, test-integration\n" "$(TEST_ARGS)"; \
 	printf "  E2E_TEST_ARGS='%s'   Extra args for test-e2e\n" "$(E2E_TEST_ARGS)"; \
-	printf "  ALL_TEST_ARGS='%s'   Extra args for test-all\n" "$(ALL_TEST_ARGS)"; \
-	printf "  E2E_BASE_URL='%s'  API URL targeted by e2e checks\n\n" "$(E2E_BASE_URL)"; \
+	printf "  ALL_TEST_ARGS='%s'   Extra args for test-all\n\n" "$(ALL_TEST_ARGS)"; \
 	printf "%sExamples%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  %smake run APP_HOST=0.0.0.0 APP_PORT=9000%s\n" "$$GREEN" "$$RESET"; \
 	printf "  %smake test TEST_ARGS='-q'%s\n" "$$GREEN" "$$RESET"; \
@@ -75,21 +74,10 @@ test-integration:
 	$(UV_RUN) pytest $(PYTEST_FLAGS) $(TEST_ARGS) -m integration
 
 test-e2e:
-	@APP_HOST="$(APP_HOST)" \
-	APP_PORT="$(APP_PORT)" \
-	E2E_BASE_URL="$(E2E_BASE_URL)" \
-	LOCAL_E2E_BASE_URL="$(LOCAL_E2E_BASE_URL)" \
-	UV_RUN='$(UV_RUN)' \
-	PYTEST_FLAGS='$(PYTEST_FLAGS)' \
-	E2E_TEST_ARGS='$(E2E_TEST_ARGS)' \
-	sh "$(SCRIPT_DIR)/test_e2e.sh"
+	$(UV_RUN) pytest $(PYTEST_FLAGS) $(E2E_TEST_ARGS) -m e2e
 
 test-all:
-	@APP_HOST="$(APP_HOST)" \
-	APP_PORT="$(APP_PORT)" \
-	E2E_BASE_URL="$(E2E_BASE_URL)" \
-	LOCAL_E2E_BASE_URL="$(LOCAL_E2E_BASE_URL)" \
-	UV_RUN='$(UV_RUN)' \
-	PYTEST_FLAGS='$(PYTEST_FLAGS)' \
-	ALL_TEST_ARGS='$(ALL_TEST_ARGS)' \
-	sh "$(SCRIPT_DIR)/test_all.sh"
+	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS)
+
+test-cov:
+	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS) --cov
