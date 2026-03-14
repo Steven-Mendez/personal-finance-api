@@ -17,8 +17,6 @@ RUN addgroup --system fastapigroup && adduser --system --group fastapiuser
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # 6. Give the non-root user ownership of the working directory, then switch to it.
-#    This must happen before `uv sync` so the .venv is created with the correct
-#    ownership from the start — eliminating the need for a costly `chown -R` later.
 RUN chown fastapiuser:fastapigroup /app
 USER fastapiuser
 
@@ -28,14 +26,20 @@ COPY --chown=fastapiuser:fastapigroup pyproject.toml uv.lock ./
 # 8. Install production dependencies (no dev extras, no project package itself)
 RUN uv sync --frozen --no-dev --no-install-project
 
-# 9. Copy the application code into the container
+# 9. Copy the application code, migrations, and start script
 COPY --chown=fastapiuser:fastapigroup ./app ./app
+COPY --chown=fastapiuser:fastapigroup ./alembic ./alembic
+COPY --chown=fastapiuser:fastapigroup alembic.ini .
+COPY --chown=fastapiuser:fastapigroup start.sh .
 
-# 10. Add the virtual environment binaries to PATH
+# 10. Ensure start script is executable
+RUN chmod +x start.sh
+
+# 11. Add the virtual environment binaries to PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
-# 11. Expose the port FastAPI will run on
+# 12. Expose the port FastAPI will run on
 EXPOSE $PORT
 
-# 12. Run the application using Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 13. Run the application using the start script
+CMD ["./start.sh"]
