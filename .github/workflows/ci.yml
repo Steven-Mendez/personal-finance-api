@@ -48,6 +48,11 @@ jobs:
     - name: Type check with mypy
       run: make mypy
 
+    - name: Run database migration check
+      run: make db-migrate
+      env:
+        DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/finance
+
     - name: Run tests
       run: make test-all
       env:

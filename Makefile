@@ -147,5 +147,11 @@ ruff:
 mypy:
 	$(UV_RUN) mypy app
 
+db-migrate:
+	$(UV_RUN) alembic upgrade head
+
+db-check:
+	$(UV_RUN) alembic check
+
 precommit:
 	$(UV_RUN) pre-commit run --all-files
