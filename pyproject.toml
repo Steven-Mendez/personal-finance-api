@@ -3,8 +3,10 @@ name = "personal-finance-api"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "asgi-correlation-id>=4.3.4",
     "fastapi[standard]>=0.135.1",
     "pydantic-settings>=2.7.1",
+    "structlog>=25.5.0",
 ]
 
 [dependency-groups]
