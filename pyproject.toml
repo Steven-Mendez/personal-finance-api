@@ -12,6 +12,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pydantic-settings>=2.7.1",
     "python-jose[cryptography]>=3.3.0",
+    "slowapi>=0.1.9",
     "sqlalchemy>=2.0.48",
     "structlog>=25.5.0",
 ]

@@ -11,12 +11,16 @@ from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.router import router as api_router
 from app.core.config import get_settings
 from app.core.exceptions.base_app_exception import BaseAppException
 from app.core.logging_config import setup_unified_logging
 from app.core.observability import setup_observability
+from app.core.rate_limit import limiter
 from app.db.session import engine
 
 setup_unified_logging()
@@ -67,8 +71,27 @@ def create_app() -> FastAPI:
         license_info={
             "name": "Proprietary",
         },
+        openapi_tags=[
+            {
+                "name": "v1",
+                "description": "Stable Version 1.0 of the API",
+            },
+            {
+                "name": "identity",
+                "description": "User authentication and management",
+            },
+            {
+                "name": "health",
+                "description": "System health and dependency status",
+            },
+        ],
         lifespan=lifespan,
     )
+
+    # Rate Limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     # Security: CORS Middleware
     app.add_middleware(
