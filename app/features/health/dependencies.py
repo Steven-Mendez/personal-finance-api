@@ -4,14 +4,17 @@ import httpx
 from fastapi import Depends
 from structlog.stdlib import BoundLogger
 
-from app.api.dependencies.auth import get_http_client
-from app.api.dependencies.logging import get_logger
-from app.api.dependencies.settings import get_app_settings
 from app.core.config import Settings
-from app.services.health.api_check import ApiHealthCheck
-from app.services.health.cognito_check import CognitoHealthCheck
-from app.services.health.default_health_service import DefaultHealthService
-from app.services.health.health_service_interface import HealthServiceInterface
+from app.core.dependencies.http import get_http_client
+from app.core.dependencies.logging import get_logger
+from app.core.dependencies.settings import get_app_settings
+
+from .logic import (
+    ApiHealthCheck,
+    CognitoHealthCheck,
+    DefaultHealthService,
+    HealthServiceInterface,
+)
 
 
 async def get_api_health_check() -> ApiHealthCheck:

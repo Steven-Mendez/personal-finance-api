@@ -9,12 +9,12 @@ from fastapi.responses import JSONResponse, Response
 
 from app.api.router import api_router
 from app.core.config import get_settings
-from app.core.exceptions import (
+from app.core.logging_config import setup_unified_logging
+from app.features.identity.exceptions import (
     AuthenticationError,
     InvalidTokenError,
     UserManagementError,
 )
-from app.core.logging_config import setup_unified_logging
 
 setup_unified_logging()
 

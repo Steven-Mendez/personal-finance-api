@@ -4,7 +4,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.auth import (
+from app.features.identity.dependencies import (
     get_authenticator,
     get_current_user,
     get_user_manager,

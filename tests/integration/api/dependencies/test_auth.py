@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.dependencies.auth import get_current_user
-from app.core.exceptions import InvalidTokenError
+from app.features.identity.dependencies import get_current_user
+from app.features.identity.exceptions import InvalidTokenError
 
 
 @pytest.mark.asyncio

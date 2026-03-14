@@ -1,4 +1,4 @@
-from typing import Annotated, Any, AsyncGenerator
+from typing import Annotated, Any
 
 import boto3
 import httpx
@@ -6,21 +6,17 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from structlog.stdlib import BoundLogger
 
-from app.api.dependencies.logging import get_logger
-from app.api.dependencies.settings import get_app_settings
 from app.core.config import Settings
-from app.services.auth import Authenticator, TokenVerifier, UserManager
-from app.services.cognito.cognito_authenticator import CognitoAuthenticator
-from app.services.cognito.cognito_token_verifier import CognitoTokenVerifier
-from app.services.cognito.cognito_user_manager import CognitoUserManager
+from app.core.dependencies.http import get_http_client
+from app.core.dependencies.logging import get_logger
+from app.core.dependencies.settings import get_app_settings
+
+from .logic import Authenticator, TokenVerifier, UserManager
+from .providers.cognito.cognito_authenticator import CognitoAuthenticator
+from .providers.cognito.cognito_token_verifier import CognitoTokenVerifier
+from .providers.cognito.cognito_user_manager import CognitoUserManager
 
 reusable_oauth2 = HTTPBearer()
-
-
-async def get_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """Dependency to provide a shared HTTP client."""
-    async with httpx.AsyncClient() as client:
-        yield client
 
 
 def get_cognito_client(

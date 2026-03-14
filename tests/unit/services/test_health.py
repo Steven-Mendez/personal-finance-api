@@ -3,9 +3,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.core.config import Settings
-from app.services.health.api_check import ApiHealthCheck
-from app.services.health.cognito_check import CognitoHealthCheck
-from app.services.health.default_health_service import DefaultHealthService
+from app.features.health.logic import (
+    ApiHealthCheck,
+    CognitoHealthCheck,
+    DefaultHealthService,
+)
 
 
 @pytest.fixture

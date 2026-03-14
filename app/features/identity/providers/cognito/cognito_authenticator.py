@@ -4,8 +4,9 @@ from botocore.exceptions import ClientError
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings
-from app.core.exceptions import AuthenticationError
-from app.services.auth import Authenticator
+
+from ...exceptions import AuthenticationError
+from ...logic import Authenticator
 
 
 class CognitoAuthenticator(Authenticator):

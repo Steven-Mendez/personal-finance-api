@@ -2,13 +2,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.dependencies import (
+from .dependencies import (
     get_authenticator,
     get_current_user,
     get_user_manager,
 )
-from app.schemas.user_create import UserCreate
-from app.services.auth import Authenticator, UserManager
+from .logic import Authenticator, UserManager
+from .schemas import UserCreate
 
 router = APIRouter()
 

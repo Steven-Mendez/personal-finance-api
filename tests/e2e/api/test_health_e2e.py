@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.health import get_health_service
-from app.schemas import ReadinessResponse
+from app.features.health.dependencies import get_health_service
+from app.features.health.schemas import ReadinessResponse
 
 
 @pytest.mark.e2e

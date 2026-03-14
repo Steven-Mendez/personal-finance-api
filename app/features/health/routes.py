@@ -2,11 +2,26 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
-from app.api.dependencies.health import get_health_service
-from app.schemas import HealthStatus, ReadinessResponse
-from app.services.health.health_service_interface import HealthServiceInterface
+from app.core.config import Settings
+from app.core.dependencies.settings import get_app_settings
+
+from .dependencies import get_health_service
+from .logic import HealthServiceInterface
+from .schemas import HealthStatus, ReadinessResponse
 
 router = APIRouter()
+
+
+@router.get("/")
+def read_root(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    health_service: Annotated[HealthServiceInterface, Depends(get_health_service)],
+) -> dict[str, str]:
+    return {
+        "message": settings.app_name,
+        "environment": settings.environment,
+        "status": health_service.build_liveness_payload().status,
+    }
 
 
 @router.get("/health/live", status_code=status.HTTP_200_OK, response_model=HealthStatus)

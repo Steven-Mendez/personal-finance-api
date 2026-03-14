@@ -5,10 +5,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.dependencies import get_app_settings, get_health_service
 from app.core.config import Settings
+from app.core.dependencies.settings import get_app_settings
+from app.features.health.dependencies import get_health_service
+from app.features.health.schemas import ReadinessResponse
 from app.main import create_app
-from app.schemas import ReadinessResponse
 
 
 @pytest.fixture(scope="function")

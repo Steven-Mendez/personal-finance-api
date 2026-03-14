@@ -4,8 +4,9 @@ from botocore.exceptions import ClientError
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings
-from app.core.exceptions import UserManagementError
-from app.services.auth import UserManager
+
+from ...exceptions import UserManagementError
+from ...logic import UserManager
 
 
 class CognitoUserManager(UserManager):

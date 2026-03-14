@@ -6,8 +6,9 @@ from jose.utils import base64url_decode
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings
-from app.core.exceptions import InvalidTokenError
-from app.services.auth import TokenVerifier
+
+from ...exceptions import InvalidTokenError
+from ...logic import TokenVerifier
 
 
 class CognitoTokenVerifier(TokenVerifier):
