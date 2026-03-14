@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.features.health.dependencies import get_health_service
-from app.features.health.schemas import ReadinessResponse
+from app.api.v1.features.health.dependencies import get_health_service
+from app.api.v1.features.health.schemas import ReadinessResponse
 
 
 @pytest.mark.e2e
@@ -12,7 +12,7 @@ def test_liveness_endpoint_returns_alive(client: TestClient) -> None:
     # Given: a running application
 
     # When
-    response = client.get("/health/live")
+    response = client.get("/api/v1/health/live")
 
     # Then
     assert response.status_code == 200
@@ -37,7 +37,7 @@ def test_readiness_endpoint_returns_ready_when_dependencies_healthy(
 
     try:
         # When
-        response = client.get("/health/ready")
+        response = client.get("/api/v1/health/ready")
 
         # Then
         assert response.status_code == 200
@@ -55,7 +55,7 @@ def test_readiness_endpoint_returns_503_when_dependencies_unhealthy(
     # Given: the readiness dependency check is overridden to report unhealthy
 
     # When
-    response = unhealthy_client.get("/health/ready")
+    response = unhealthy_client.get("/api/v1/health/ready")
 
     # Then
     assert response.status_code == 503
@@ -69,7 +69,7 @@ def test_root_endpoint_returns_service_metadata(client: TestClient) -> None:
     # Given: the app is configured with environment="test"
 
     # When
-    response = client.get("/")
+    response = client.get("/api/v1/")
 
     # Then
     assert response.status_code == 200

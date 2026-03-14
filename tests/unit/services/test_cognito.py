@@ -2,19 +2,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.config import Settings
-from app.features.identity.exceptions import (
+from app.api.v1.features.identity.exceptions import (
     InvalidTokenError,
 )
-from app.features.identity.providers.cognito.cognito_authenticator import (
+from app.api.v1.features.identity.providers.cognito.cognito_authenticator import (
     CognitoAuthenticator,
 )
-from app.features.identity.providers.cognito.cognito_token_verifier import (
+from app.api.v1.features.identity.providers.cognito.cognito_token_verifier import (
     CognitoTokenVerifier,
 )
-from app.features.identity.providers.cognito.cognito_user_manager import (
+from app.api.v1.features.identity.providers.cognito.cognito_user_manager import (
     CognitoUserManager,
 )
+from app.core.config import Settings
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ class TestCognitoTokenVerifier:
             patch("jose.jwt.get_unverified_headers", return_value={"kid": "test_kid"}),
             patch("jose.jwk.construct") as mock_construct,
             patch(
-                "app.features.identity.providers.cognito.cognito_token_verifier.base64url_decode",
+                "app.api.v1.features.identity.providers.cognito.cognito_token_verifier.base64url_decode",
                 return_value=b"decoded_sig",
             ),
             patch("jose.jwt.get_unverified_claims", return_value=claims),

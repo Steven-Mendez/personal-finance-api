@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.features.health.dependencies import get_health_service
-from app.features.health.schemas import ReadinessResponse
+from app.api.v1.features.health.dependencies import get_health_service
+from app.api.v1.features.health.schemas import ReadinessResponse
 
 
 @pytest.mark.integration
@@ -12,7 +12,7 @@ def test_liveness_route_returns_alive(client: TestClient) -> None:
     # Given: a running application
 
     # When
-    response = client.get("/health/live")
+    response = client.get("/api/v1/health/live")
 
     # Then
     assert response.status_code == 200
@@ -37,7 +37,7 @@ def test_readiness_route_returns_ready_when_health_check_passes(
 
     try:
         # When
-        response = client.get("/health/ready")
+        response = client.get("/api/v1/health/ready")
 
         # Then
         assert response.status_code == 200
@@ -67,7 +67,7 @@ def test_readiness_route_returns_503_when_health_check_fails(
 
     try:
         # When
-        response = client.get("/health/ready")
+        response = client.get("/api/v1/health/ready")
 
         # Then
         assert response.status_code == 503

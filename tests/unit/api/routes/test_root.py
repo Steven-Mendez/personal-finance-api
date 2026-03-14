@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
+from app.api.v1.features.health.routes import read_root
+from app.api.v1.features.health.schemas import HealthStatus
 from app.core.config import Settings
-from app.features.health.routes import read_root
-from app.features.health.schemas import HealthStatus
 
 
 def test_read_root_returns_settings_values() -> None:

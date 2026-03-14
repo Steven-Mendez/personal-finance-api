@@ -7,7 +7,7 @@ def test_root_route_returns_settings_payload(client: TestClient) -> None:
     # Given: the app is wired with its real settings (no dependency overrides)
 
     # When
-    response = client.get("/")
+    response = client.get("/api/v1/")
 
     # Then
     assert response.status_code == 200

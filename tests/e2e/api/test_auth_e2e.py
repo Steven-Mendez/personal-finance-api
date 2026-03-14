@@ -4,7 +4,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from app.features.identity.dependencies import (
+from app.api.v1.features.identity.dependencies import (
     get_authenticator,
     get_current_user,
     get_user_manager,
@@ -18,7 +18,7 @@ def client() -> TestClient:
 
 
 def test_get_me_unauthorized(client: TestClient) -> None:
-    response = client.get("/auth/me")
+    response = client.get("/api/v1/auth/me")
     # FastAPI's HTTPBearer returns 401 if header is missing
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -29,7 +29,7 @@ def test_get_me_success(client: TestClient) -> None:
 
     try:
         response = client.get(
-            "/auth/me", headers={"Authorization": "Bearer some_token"}
+            "/api/v1/auth/me", headers={"Authorization": "Bearer some_token"}
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"user": {"sub": "test_user_id"}}
@@ -50,7 +50,7 @@ def test_get_me_invalid_token(client: TestClient) -> None:
 
     try:
         response = client.get(
-            "/auth/me", headers={"Authorization": "Bearer invalid_token"}
+            "/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"}
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json()["detail"] == "Invalid token"
@@ -68,7 +68,7 @@ def test_login_success(client: TestClient) -> None:
 
     try:
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"email": "test@example.com", "password": "Password123!"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -87,7 +87,7 @@ def test_create_user_success(client: TestClient) -> None:
 
     try:
         response = client.post(
-            "/auth/users",
+            "/api/v1/auth/users",
             json={"email": "test@example.com", "password": "Password123!"},
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -107,7 +107,7 @@ def test_list_users_success(client: TestClient) -> None:
 
     try:
         response = client.get(
-            "/auth/users", headers={"Authorization": "Bearer some_token"}
+            "/api/v1/auth/users", headers={"Authorization": "Bearer some_token"}
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"users": mock_users}
