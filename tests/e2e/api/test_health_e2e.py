@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,16 +20,16 @@ def test_liveness_endpoint_returns_alive(client: TestClient) -> None:
 def test_readiness_endpoint_returns_ready_when_dependencies_healthy(
     client: TestClient,
 ) -> None:
-    # Given: all dependencies are healthy (default in the test environment)
+    # Given: all dependencies are healthy
+    with patch("app.services.health.check_cognito", return_value=True):
+        # When
+        response = client.get("/health/ready")
 
-    # When
-    response = client.get("/health/ready")
-
-    # Then
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["status"] == "ready"
-    assert payload["dependencies"] == {"api": "healthy"}
+        # Then
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ready"
+        assert payload["dependencies"] == {"api": "healthy", "cognito": "healthy"}
 
 
 @pytest.mark.e2e
@@ -43,7 +45,7 @@ def test_readiness_endpoint_returns_503_when_dependencies_unhealthy(
     assert response.status_code == 503
     payload = response.json()
     assert payload["status"] == "unready"
-    assert payload["dependencies"] == {"api": "unhealthy"}
+    assert payload["dependencies"] == {"api": "unhealthy", "cognito": "unhealthy"}
 
 
 @pytest.mark.e2e

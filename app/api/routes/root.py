@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.api.dependencies.settings import get_app_settings
+from app.api.dependencies import get_app_settings
 from app.core.config import Settings
 
 router = APIRouter()

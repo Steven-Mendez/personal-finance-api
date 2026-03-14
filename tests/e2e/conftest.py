@@ -4,8 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.health import get_readiness_dependencies
-from app.api.dependencies.settings import get_app_settings
+from app.api.dependencies import get_app_settings, get_readiness_dependencies
 from app.core.config import Settings
 from app.main import create_app
 
@@ -29,7 +28,7 @@ def client(app: FastAPI) -> Generator[TestClient, None, None]:
 @pytest.fixture(scope="function")
 def unhealthy_client(app: FastAPI) -> Generator[TestClient, None, None]:
     async def override_unhealthy_dependencies() -> dict[str, str]:
-        return {"api": "unhealthy"}
+        return {"api": "unhealthy", "cognito": "unhealthy"}
 
     app.dependency_overrides[get_readiness_dependencies] = (
         override_unhealthy_dependencies

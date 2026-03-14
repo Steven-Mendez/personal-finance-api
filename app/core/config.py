@@ -1,11 +1,20 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = "Personal Finance API"
-    environment: str = "development"
+    environment: Literal["development", "production", "test"] = "development"
+
+    cognito_region: str = "us-east-1"
+    cognito_user_pool_id: str = "us-east-1_example"
+    cognito_app_client_id: str = "example_client_id"
+
+    @property
+    def cognito_jwks_url(self) -> str:
+        return f"https://cognito-idp.{self.cognito_region}.amazonaws.com/{self.cognito_user_pool_id}/.well-known/jwks.json"
 
     model_config = SettingsConfigDict(
         env_file=".env",
