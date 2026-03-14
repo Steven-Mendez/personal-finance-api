@@ -57,6 +57,19 @@ class BaseRepository(Generic[ModelT]):
         await self.session.flush()
         return instance
 
+    async def update(self, id: UUID, **data: Any) -> ModelT | None:
+        """Update an existing record in the database."""
+        instance = await self.get_by_id(id)
+        if not instance:
+            return None
+
+        for key, value in data.items():
+            if hasattr(instance, key):
+                setattr(instance, key, value)
+
+        await self.session.flush()
+        return instance
+
     async def delete(self, id: UUID) -> bool:
         """Delete a record from the database."""
         instance = await self.get_by_id(id)
