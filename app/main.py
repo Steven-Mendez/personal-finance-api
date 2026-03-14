@@ -9,12 +9,14 @@ import structlog
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from app.api.router import router as api_router
 from app.core.config import get_settings
 from app.core.exceptions.base_app_exception import BaseAppException
 from app.core.logging_config import setup_unified_logging
+from app.db.session import engine
 
 setup_unified_logging()
 
@@ -45,15 +47,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if hasattr(app.state, "http_client"):
         await app.state.http_client.aclose()
 
+    # Close DB engine
+    await engine.dispose()
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+    # Security: CORS Middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Adjust in production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Security: Custom Security Headers Middleware
+    @app.middleware("http")
+    async def security_headers_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+        return response
+
     app.include_router(api_router, prefix="/api")
 
-    # Logging middleware must be registered before CorrelationIdMiddleware so that
-    # Starlette's reversed build order makes CorrelationIdMiddleware the outermost
-    # wrapper — i.e. it executes first and populates correlation_id before we read it.
+    # Logging middleware
     @app.middleware("http")
     async def logging_middleware(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -69,7 +96,6 @@ def create_app() -> FastAPI:
         )
 
         start_time = time.perf_counter()
-        # In tests using TestClient, request.app is the app instance
         response = await call_next(request)
         process_time = time.perf_counter() - start_time
 
@@ -87,7 +113,10 @@ def create_app() -> FastAPI:
     async def base_app_exception_handler(
         request: Request, exc: BaseAppException
     ) -> JSONResponse:
-        content: dict[str, Any] = {"detail": exc.message}
+        content: dict[str, Any] = {
+            "status": "error",
+            "detail": exc.message,
+        }
         if exc.error_code:
             content["error_code"] = exc.error_code
         if exc.data:
@@ -111,6 +140,7 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={
+                "status": "error",
                 "detail": (
                     "An internal server error occurred. Our team has been notified."
                 ),

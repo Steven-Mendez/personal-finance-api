@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import httpx
 from fastapi import Depends, Request
@@ -24,7 +24,7 @@ def get_cognito_client(request: Request) -> Any:
 
 def get_http_client_from_state(request: Request) -> httpx.AsyncClient:
     """Provides a pre-warmed HTTP client from the app state."""
-    return request.app.state.http_client
+    return cast(httpx.AsyncClient, request.app.state.http_client)
 
 
 async def get_token_verifier(

@@ -23,3 +23,8 @@ repos:
           - pydantic
           - pydantic-settings
           - fastapi
+          - sqlalchemy
+          - asyncpg
+          - httpx
+          - structlog
+          - boto3

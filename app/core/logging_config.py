@@ -1,5 +1,6 @@
 import logging
 import sys
+from typing import Any
 
 import structlog
 
@@ -10,7 +11,7 @@ def setup_unified_logging() -> None:
     settings = get_settings()
     is_production = settings.environment == "production"
 
-    shared_processors: list[structlog.types.Processor] = [
+    shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
@@ -18,7 +19,7 @@ def setup_unified_logging() -> None:
     ]
 
     if is_production:
-        processors: list[structlog.types.Processor] = shared_processors + [
+        processors: list[Any] = shared_processors + [
             structlog.processors.ExceptionRenderer(),
             structlog.processors.JSONRenderer(),
         ]
@@ -35,14 +36,16 @@ def setup_unified_logging() -> None:
     )
 
     # Bridge standard logging (including Uvicorn) through the structlog pipeline
+    final_processors: list[Any] = [
+        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+        structlog.processors.JSONRenderer()
+        if is_production
+        else structlog.dev.ConsoleRenderer(),
+    ]
+
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,
-        processors=[
-            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.processors.JSONRenderer()
-            if is_production
-            else structlog.dev.ConsoleRenderer(),
-        ],
+        processors=final_processors,
     )
 
     handler = logging.StreamHandler(sys.stdout)
