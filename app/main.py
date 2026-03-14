@@ -32,25 +32,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Everything inside the yield is available during app runtime.
     """
     settings = get_settings()
+    logger.info("Application starting up", environment=settings.environment)
 
     # Initialize long-lived clients (only if not already mocked/set)
     if not hasattr(app.state, "http_client"):
         app.state.http_client = httpx.AsyncClient(timeout=10.0)
 
     if not hasattr(app.state, "cognito_client"):
-        app.state.cognito_client = boto3.client(
-            "cognito-idp",
-            region_name=settings.cognito_region,
-        )
+        try:
+            app.state.cognito_client = boto3.client(
+                "cognito-idp",
+                region_name=settings.cognito_region,
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to initialize Cognito client. Auth features may not work.",
+                error=str(e),
+            )
+            app.state.cognito_client = None
 
+    logger.info("Application startup complete")
     yield
 
     # Cleanup at shutdown
+    logger.info("Application shutting down")
     if hasattr(app.state, "http_client"):
         await app.state.http_client.aclose()
 
     # Close DB engine
     await engine.dispose()
+    logger.info("Application shutdown complete")
 
 
 def create_app() -> FastAPI:

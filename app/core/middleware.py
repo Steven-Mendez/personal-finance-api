@@ -72,4 +72,8 @@ def setup_middleware(app: FastAPI) -> None:
         return response
 
     # Correlation ID middleware
-    app.add_middleware(CorrelationIdMiddleware)
+    app.add_middleware(
+        CorrelationIdMiddleware,
+        header_name="X-Request-ID",
+        update_request_header=True,
+    )
