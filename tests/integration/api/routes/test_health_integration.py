@@ -1,7 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+
+from app.api.dependencies.health import get_health_service
+from app.schemas import ReadinessResponse
 
 
 @pytest.mark.integration
@@ -21,7 +24,18 @@ def test_readiness_route_returns_ready_when_health_check_passes(
     client: TestClient,
 ) -> None:
     # Given: all internal health checks pass (default behaviour)
-    with patch("app.services.health.check_cognito", return_value=True):
+    mock_service = MagicMock()
+    mock_service.check_dependencies = AsyncMock(
+        return_value={"api": "healthy", "cognito": "healthy"}
+    )
+    mock_service.build_readiness_payload.return_value = ReadinessResponse(
+        status="ready",
+        dependencies={"api": "healthy", "cognito": "healthy"},
+    )
+
+    client.app.dependency_overrides[get_health_service] = lambda: mock_service
+
+    try:
         # When
         response = client.get("/health/ready")
 
@@ -31,47 +45,34 @@ def test_readiness_route_returns_ready_when_health_check_passes(
             "status": "ready",
             "dependencies": {"api": "healthy", "cognito": "healthy"},
         }
+    finally:
+        client.app.dependency_overrides.clear()
 
 
 @pytest.mark.integration
-def test_readiness_route_returns_503_when_health_check_raises(
+def test_readiness_route_returns_503_when_health_check_fails(
     client: TestClient,
 ) -> None:
-    # Given: the low-level check_api call raises an unexpected error
-    async def failing_check_api() -> bool:
-        raise RuntimeError("connection refused")
+    # Given: the readiness check fails
+    mock_service = MagicMock()
+    mock_service.check_dependencies = AsyncMock(
+        return_value={"api": "unhealthy", "cognito": "healthy"}
+    )
+    mock_service.build_readiness_payload.return_value = ReadinessResponse(
+        status="unready",
+        dependencies={"api": "unhealthy", "cognito": "healthy"},
+    )
 
-    with (
-        patch("app.services.health.check_api", failing_check_api),
-        patch("app.services.health.check_cognito", return_value=True),
-    ):
+    client.app.dependency_overrides[get_health_service] = lambda: mock_service
+
+    try:
         # When
         response = client.get("/health/ready")
 
-    # Then
-    assert response.status_code == 503
-    payload = response.json()
-    assert payload["status"] == "unready"
-    assert payload["dependencies"] == {"api": "unhealthy", "cognito": "healthy"}
-
-
-@pytest.mark.integration
-def test_readiness_route_returns_503_when_health_check_returns_false(
-    client: TestClient,
-) -> None:
-    # Given: the low-level check_api call returns False
-    async def degraded_check_api() -> bool:
-        return False
-
-    with (
-        patch("app.services.health.check_api", degraded_check_api),
-        patch("app.services.health.check_cognito", return_value=True),
-    ):
-        # When
-        response = client.get("/health/ready")
-
-    # Then
-    assert response.status_code == 503
-    payload = response.json()
-    assert payload["status"] == "unready"
-    assert payload["dependencies"] == {"api": "unhealthy", "cognito": "healthy"}
+        # Then
+        assert response.status_code == 503
+        payload = response.json()
+        assert payload["status"] == "unready"
+        assert payload["dependencies"] == {"api": "unhealthy", "cognito": "healthy"}
+    finally:
+        client.app.dependency_overrides.clear()

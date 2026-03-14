@@ -1,38 +1,75 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, AsyncGenerator
 
-from fastapi import Depends, HTTPException, status
+import boto3
+import httpx
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from structlog.stdlib import BoundLogger
 
-from app.services.auth.base import Authenticator, TokenVerifier, UserManager
-from app.services.cognito.cognito import CognitoAuthService
+from app.api.dependencies.logging import get_logger
+from app.api.dependencies.settings import get_app_settings
+from app.core.config import Settings
+from app.services.auth import Authenticator, TokenVerifier, UserManager
+from app.services.cognito.cognito_authenticator import CognitoAuthenticator
+from app.services.cognito.cognito_token_verifier import CognitoTokenVerifier
+from app.services.cognito.cognito_user_manager import CognitoUserManager
 
 reusable_oauth2 = HTTPBearer()
 
 
-async def get_auth_service() -> CognitoAuthService:
-    """Provide a concrete implementation of auth services."""
-    return CognitoAuthService()
+async def get_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Dependency to provide a shared HTTP client."""
+    async with httpx.AsyncClient() as client:
+        yield client
+
+
+def get_cognito_client(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> Any:
+    """Dependency to provide a Cognito Boto3 client."""
+    return boto3.client(
+        "cognito-idp",
+        region_name=settings.cognito_region,
+    )
 
 
 async def get_token_verifier(
-    service: Annotated[CognitoAuthService, Depends(get_auth_service)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    logger: Annotated[BoundLogger, Depends(get_logger)],
+    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client)],
 ) -> TokenVerifier:
     """Dependency that provides a TokenVerifier interface."""
-    return service
+    return CognitoTokenVerifier(
+        settings=settings,
+        logger=logger,
+        http_client=http_client,
+    )
 
 
 async def get_user_manager(
-    service: Annotated[CognitoAuthService, Depends(get_auth_service)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    logger: Annotated[BoundLogger, Depends(get_logger)],
+    cognito_client: Annotated[Any, Depends(get_cognito_client)],
 ) -> UserManager:
     """Dependency that provides a UserManager interface."""
-    return service
+    return CognitoUserManager(
+        settings=settings,
+        logger=logger,
+        cognito_client=cognito_client,
+    )
 
 
 async def get_authenticator(
-    service: Annotated[CognitoAuthService, Depends(get_auth_service)],
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    logger: Annotated[BoundLogger, Depends(get_logger)],
+    cognito_client: Annotated[Any, Depends(get_cognito_client)],
 ) -> Authenticator:
     """Dependency that provides an Authenticator interface."""
-    return service
+    return CognitoAuthenticator(
+        settings=settings,
+        logger=logger,
+        cognito_client=cognito_client,
+    )
 
 
 async def get_current_user(
@@ -40,11 +77,4 @@ async def get_current_user(
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
 ) -> dict[str, Any]:
     """Dependency to retrieve the current user from a JWT."""
-    try:
-        user = await verifier.verify_token(token.credentials)
-        return user
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-        ) from e
+    return await verifier.verify_token(token.credentials)

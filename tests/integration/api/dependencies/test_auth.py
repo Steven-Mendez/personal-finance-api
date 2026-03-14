@@ -1,10 +1,10 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.api.dependencies.auth import get_current_user
+from app.core.exceptions import InvalidTokenError
 
 
 @pytest.mark.asyncio
@@ -23,10 +23,9 @@ async def test_get_current_user_success() -> None:
 async def test_get_current_user_invalid_token() -> None:
     token = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid_token")
     mock_auth_service = AsyncMock()
-    mock_auth_service.verify_token.side_effect = ValueError("Invalid token")
+    mock_auth_service.verify_token.side_effect = InvalidTokenError("Invalid token")
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(InvalidTokenError) as exc_info:
         await get_current_user(token, mock_auth_service)
 
-    assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
-    assert exc_info.value.detail == "Invalid token"
+    assert str(exc_info.value) == "Invalid token"

@@ -9,6 +9,11 @@ from fastapi.responses import JSONResponse, Response
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.exceptions import (
+    AuthenticationError,
+    InvalidTokenError,
+    UserManagementError,
+)
 from app.core.logging_config import setup_unified_logging
 
 setup_unified_logging()
@@ -34,6 +39,8 @@ def create_app() -> FastAPI:
             method=request.method,
             path=request.url.path,
             client_ip=request.client.host if request.client else None,
+            environment=settings.environment,
+            app_name=settings.app_name,
         )
 
         start_time = time.perf_counter()
@@ -49,6 +56,33 @@ def create_app() -> FastAPI:
         return response
 
     app.add_middleware(CorrelationIdMiddleware)
+
+    @app.exception_handler(AuthenticationError)
+    async def authentication_error_handler(
+        request: Request, exc: AuthenticationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(InvalidTokenError)
+    async def invalid_token_error_handler(
+        request: Request, exc: InvalidTokenError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(UserManagementError)
+    async def user_management_error_handler(
+        request: Request, exc: UserManagementError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc)},
+        )
 
     @app.exception_handler(Exception)
     async def global_unhandled_exception_handler(

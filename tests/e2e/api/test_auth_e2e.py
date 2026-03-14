@@ -1,8 +1,14 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.auth import get_auth_service, get_current_user
+from app.api.dependencies.auth import (
+    get_authenticator,
+    get_current_user,
+    get_user_manager,
+)
 from app.main import app
 
 
@@ -19,7 +25,7 @@ def test_get_me_unauthorized(client: TestClient) -> None:
 
 def test_get_me_success(client: TestClient) -> None:
     # Override dependency to mock successful authentication
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "test_user_id"}
+    client.app.dependency_overrides[get_current_user] = lambda: {"sub": "test_user_id"}
 
     try:
         response = client.get(
@@ -28,7 +34,7 @@ def test_get_me_success(client: TestClient) -> None:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"user": {"sub": "test_user_id"}}
     finally:
-        app.dependency_overrides.clear()
+        client.app.dependency_overrides.clear()
 
 
 def test_get_me_invalid_token(client: TestClient) -> None:
@@ -40,7 +46,7 @@ def test_get_me_invalid_token(client: TestClient) -> None:
 
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    app.dependency_overrides[get_current_user] = mock_get_current_user
+    client.app.dependency_overrides[get_current_user] = mock_get_current_user
 
     try:
         response = client.get(
@@ -49,17 +55,16 @@ def test_get_me_invalid_token(client: TestClient) -> None:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json()["detail"] == "Invalid token"
     finally:
-        app.dependency_overrides.clear()
+        client.app.dependency_overrides.clear()
 
 
 def test_login_success(client: TestClient) -> None:
     mock_tokens = {"AccessToken": "access", "IdToken": "id", "RefreshToken": "refresh"}
 
-    class MockCognitoService:
-        async def login(self, email, password):
-            return mock_tokens
+    mock_authenticator = AsyncMock()
+    mock_authenticator.login.return_value = mock_tokens
 
-    app.dependency_overrides[get_auth_service] = MockCognitoService
+    client.app.dependency_overrides[get_authenticator] = lambda: mock_authenticator
 
     try:
         response = client.post(
@@ -69,17 +74,16 @@ def test_login_success(client: TestClient) -> None:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == mock_tokens
     finally:
-        app.dependency_overrides.clear()
+        client.app.dependency_overrides.clear()
 
 
 def test_create_user_success(client: TestClient) -> None:
     mock_user = {"Username": "test@example.com"}
 
-    class MockCognitoService:
-        async def create_user(self, email, password):
-            return mock_user
+    mock_user_manager = AsyncMock()
+    mock_user_manager.create_user.return_value = mock_user
 
-    app.dependency_overrides[get_auth_service] = MockCognitoService
+    client.app.dependency_overrides[get_user_manager] = lambda: mock_user_manager
 
     try:
         response = client.post(
@@ -89,18 +93,17 @@ def test_create_user_success(client: TestClient) -> None:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json() == {"user": mock_user}
     finally:
-        app.dependency_overrides.clear()
+        client.app.dependency_overrides.clear()
 
 
 def test_list_users_success(client: TestClient) -> None:
     mock_users = [{"Username": "user1"}]
 
-    class MockCognitoService:
-        async def list_users(self):
-            return mock_users
+    mock_user_manager = AsyncMock()
+    mock_user_manager.list_users.return_value = mock_users
 
-    app.dependency_overrides[get_auth_service] = MockCognitoService
-    app.dependency_overrides[get_current_user] = lambda: {"sub": "admin"}
+    client.app.dependency_overrides[get_user_manager] = lambda: mock_user_manager
+    client.app.dependency_overrides[get_current_user] = lambda: {"sub": "admin"}
 
     try:
         response = client.get(
@@ -109,4 +112,4 @@ def test_list_users_success(client: TestClient) -> None:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == {"users": mock_users}
     finally:
-        app.dependency_overrides.clear()
+        client.app.dependency_overrides.clear()

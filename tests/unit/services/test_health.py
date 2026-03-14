@@ -1,95 +1,117 @@
-import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.health import (
-    build_liveness_payload,
-    build_readiness_payload,
-    check_cognito,
-    check_dependencies,
-)
+from app.core.config import Settings
+from app.services.health.api_check import ApiHealthCheck
+from app.services.health.cognito_check import CognitoHealthCheck
+from app.services.health.default_health_service import DefaultHealthService
 
 
-def test_build_liveness_payload_returns_alive_status() -> None:
-    # Given / When
-    payload = build_liveness_payload()
-
-    # Then
-    assert payload.status == "alive"
+@pytest.fixture
+def settings() -> Settings:
+    return Settings()
 
 
-@pytest.mark.parametrize(
-    "dependencies,expected_status",
-    [
-        ({}, "ready"),
-        ({"api": "healthy"}, "ready"),
-        ({"api": "healthy", "cognito": "healthy"}, "ready"),
-        ({"api": "unhealthy"}, "unready"),
-        ({"api": "healthy", "cognito": "unhealthy"}, "unready"),
-        ({"api": "unhealthy", "cognito": "unhealthy"}, "unready"),
-    ],
-)
-def test_build_readiness_payload_derives_status_from_dependencies(
-    dependencies: dict[str, str], expected_status: str
-) -> None:
-    # Given / When
-    payload = build_readiness_payload(dependencies)
-
-    # Then
-    assert payload.status == expected_status
-    assert payload.dependencies == dependencies
+@pytest.fixture
+def logger() -> MagicMock:
+    return MagicMock()
 
 
-@pytest.mark.asyncio
-async def test_check_cognito_healthy() -> None:
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        from unittest.mock import MagicMock
+@pytest.fixture
+def http_client() -> AsyncMock:
+    return AsyncMock()
 
+
+class TestApiHealthCheck:
+    @pytest.mark.asyncio
+    async def test_check_returns_healthy(self) -> None:
+        check = ApiHealthCheck()
+        name, status = await check.check()
+        assert name == "api"
+        assert status == "healthy"
+
+
+class TestCognitoHealthCheck:
+    @pytest.mark.asyncio
+    async def test_check_cognito_healthy(
+        self, settings: Settings, logger: MagicMock, http_client: AsyncMock
+    ) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_get.return_value = mock_response
+        http_client.get.return_value = mock_response
 
-        assert await check_cognito() is True
+        check = CognitoHealthCheck(settings, logger, http_client)
+        name, status = await check.check()
 
+        assert name == "cognito"
+        assert status == "healthy"
 
-@pytest.mark.asyncio
-async def test_check_cognito_unhealthy() -> None:
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        from unittest.mock import MagicMock
-
+    @pytest.mark.asyncio
+    async def test_check_cognito_unhealthy(
+        self, settings: Settings, logger: MagicMock, http_client: AsyncMock
+    ) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 404
-        mock_get.return_value = mock_response
+        http_client.get.return_value = mock_response
 
-        assert await check_cognito() is False
+        check = CognitoHealthCheck(settings, logger, http_client)
+        name, status = await check.check()
 
+        assert name == "cognito"
+        assert status == "unhealthy"
 
-@pytest.mark.asyncio
-async def test_check_dependencies_returns_healthy_by_default() -> None:
-    with (
-        patch("app.services.health.check_api", return_value=True),
-        patch("app.services.health.check_cognito", return_value=True),
-    ):
-        result = await check_dependencies()
+    @pytest.mark.asyncio
+    async def test_check_cognito_exception(
+        self, settings: Settings, logger: MagicMock, http_client: AsyncMock
+    ) -> None:
+        http_client.get.side_effect = Exception("network error")
 
-        assert result == {"api": "healthy", "cognito": "healthy"}
+        check = CognitoHealthCheck(settings, logger, http_client)
+        name, status = await check.check()
 
-
-@pytest.mark.asyncio
-async def test_check_dependencies_returns_unhealthy_when_check_api_raises() -> None:
-    with (
-        patch("app.services.health.check_api", side_effect=Exception("boom")),
-        patch("app.services.health.check_cognito", return_value=True),
-    ):
-        result = await check_dependencies()
-
-        assert result == {"api": "unhealthy", "cognito": "healthy"}
+        assert name == "cognito"
+        assert status == "unhealthy"
+        logger.error.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_check_dependencies_returns_unhealthy_on_timeout() -> None:
-    with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
-        result = await check_dependencies()
+class TestDefaultHealthService:
+    def test_build_liveness_payload_returns_alive_status(self) -> None:
+        service = DefaultHealthService(checks=[])
+        payload = service.build_liveness_payload()
+        assert payload.status == "alive"
 
-    assert result == {"api": "unhealthy", "cognito": "unhealthy"}
+    @pytest.mark.parametrize(
+        "dependencies,expected_status",
+        [
+            ({}, "ready"),
+            ({"api": "healthy"}, "ready"),
+            ({"api": "healthy", "cognito": "healthy"}, "ready"),
+            ({"api": "unhealthy"}, "unready"),
+            ({"api": "healthy", "cognito": "unhealthy"}, "unready"),
+            ({"api": "unhealthy", "cognito": "unhealthy"}, "unready"),
+        ],
+    )
+    def test_build_readiness_payload_derives_status_from_dependencies(
+        self,
+        dependencies: dict[str, str],
+        expected_status: str,
+    ) -> None:
+        service = DefaultHealthService(checks=[])
+        payload = service.build_readiness_payload(dependencies)
+        assert payload.status == expected_status
+        assert payload.dependencies == dependencies
+
+    @pytest.mark.asyncio
+    async def test_check_dependencies_aggregates_results(self) -> None:
+        mock_check_1 = AsyncMock()
+        mock_check_1.check.return_value = ("api", "healthy")
+        mock_check_2 = AsyncMock()
+        mock_check_2.check.return_value = ("cognito", "unhealthy")
+
+        service = DefaultHealthService(checks=[mock_check_1, mock_check_2])
+        result = await service.check_dependencies()
+
+        assert result == {"api": "healthy", "cognito": "unhealthy"}
+        mock_check_1.check.assert_called_once()
+        mock_check_2.check.assert_called_once()
