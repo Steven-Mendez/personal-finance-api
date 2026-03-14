@@ -1,10 +1,12 @@
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr
 
 
 class UserCreate(BaseModel):
     """Schema for user creation requests."""
+
+    model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
     password: SecretStr

@@ -16,6 +16,7 @@ from app.core.logging_config import setup_unified_logging
 from app.core.middleware import setup_middleware
 from app.core.observability import setup_observability
 from app.core.rate_limit import limiter
+from app.core.schemas.responses import ResponseEnvelope
 from app.db.session import engine
 
 # Initialize logging as early as possible
@@ -82,6 +83,18 @@ def create_app() -> FastAPI:
                 "description": "System health and dependency status",
             },
         ],
+        responses={
+            400: {"model": ResponseEnvelope[None], "description": "Bad Request"},
+            401: {"model": ResponseEnvelope[None], "description": "Unauthorized"},
+            403: {"model": ResponseEnvelope[None], "description": "Forbidden"},
+            404: {"model": ResponseEnvelope[None], "description": "Not Found"},
+            409: {"model": ResponseEnvelope[None], "description": "Conflict"},
+            422: {"model": ResponseEnvelope[None], "description": "Validation Error"},
+            500: {
+                "model": ResponseEnvelope[None],
+                "description": "Internal Server Error",
+            },
+        },
         lifespan=lifespan,
     )
 
