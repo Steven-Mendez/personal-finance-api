@@ -16,7 +16,9 @@ def test_liveness_route_returns_alive(client: TestClient) -> None:
 
     # Then
     assert response.status_code == 200
-    assert response.json() == {"status": "alive"}
+    data = response.json()
+    assert data["status"] == "alive"
+    assert "version" in data
 
 
 @pytest.mark.integration

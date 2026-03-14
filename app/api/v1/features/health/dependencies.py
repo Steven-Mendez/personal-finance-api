@@ -41,4 +41,5 @@ async def get_health_service(
         db_check=DatabaseHealthCheck(db_session),
         cognito_check=CognitoHealthCheck(cognito_client, settings.cognito_user_pool_id),
         logger=logger,
+        version=settings.commit_sha,
     )

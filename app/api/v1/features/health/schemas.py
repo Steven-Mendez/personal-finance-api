@@ -7,6 +7,7 @@ StatusLiteral = Literal["healthy", "unhealthy"]
 
 class HealthStatus(BaseModel):
     status: Literal["alive", "dead"]
+    version: str | None = None
 
 
 class ReadinessResponse(BaseModel):

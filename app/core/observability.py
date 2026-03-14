@@ -18,7 +18,7 @@ def setup_observability(app: FastAPI) -> None:
             "/health/live",
             "/health/ready",
         ],
-        env_var_name="ENABLE_METRICS",
+        env_var_name="enable_metrics",
     )
     instrumentator.instrument(app).expose(
         app, include_in_schema=False, tags=["observability"]

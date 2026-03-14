@@ -108,14 +108,16 @@ class DefaultHealthService(HealthServiceInterface):
         db_check: DatabaseHealthCheck,
         cognito_check: CognitoHealthCheck,
         logger: BoundLogger,
+        version: str = "development",
     ) -> None:
         self.api_check = api_check
         self.db_check = db_check
         self.cognito_check = cognito_check
         self.logger = logger
+        self.version = version
 
     def build_liveness_payload(self) -> HealthStatus:
-        return HealthStatus(status="alive")
+        return HealthStatus(status="alive", version=self.version)
 
     def build_readiness_payload(
         self,

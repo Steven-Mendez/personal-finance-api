@@ -8,7 +8,7 @@ settings = get_settings()
 
 # We use asyncpg for PostgreSQL async connectivity
 engine = create_async_engine(
-    settings.database_url,
+    settings.database_url.get_secret_value(),
     pool_pre_ping=True,
     echo=settings.environment == "development",
 )

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -13,11 +13,20 @@ class ResponseMetadata(BaseModel):
     version: str = "v1"
 
 
+class ErrorDetail(BaseModel):
+    """Detailed error information."""
+
+    message: str
+    error_code: str | None = None
+    data: dict[str, Any] | None = None
+
+
 class ResponseEnvelope(BaseModel, Generic[DataT]):
     """Standardized API response envelope."""
 
     status: Literal["success", "error"] = "success"
-    data: DataT
+    data: DataT | None = None
+    error: ErrorDetail | None = None
     metadata: ResponseMetadata = Field(default_factory=ResponseMetadata)
 
 

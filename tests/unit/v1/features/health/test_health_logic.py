@@ -101,6 +101,7 @@ class TestDefaultHealthService:
             db_check=mock_db_check,
             cognito_check=mock_cognito_check,
             logger=MagicMock(),
+            version="test-version",
         )
 
     def test_build_liveness_payload_returns_alive_status(
@@ -109,6 +110,7 @@ class TestDefaultHealthService:
         payload = health_service.build_liveness_payload()
         assert isinstance(payload, HealthStatus)
         assert payload.status == "alive"
+        assert payload.version == "test-version"
 
     @pytest.mark.parametrize(
         "dependencies, expected_status",
