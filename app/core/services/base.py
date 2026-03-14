@@ -1,3 +1,5 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,20 @@ class BaseService:
     def __init__(self, db: AsyncSession, logger: BoundLogger) -> None:
         self.db = db
         self.logger = logger
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncGenerator[None, None]:
+        """
+        Standard context manager for handling database transactions.
+        Ensures that operations are committed if successful, or rolled back on error.
+        """
+        try:
+            yield
+            await self.db.commit()
+        except Exception as e:
+            await self.db.rollback()
+            self.log_error("Transaction failed, rolling back", error=str(e))
+            raise e
 
     def log_info(self, event: str, **kwargs: Any) -> None:
         """Helper to log informative events with service context."""

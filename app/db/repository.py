@@ -2,9 +2,10 @@ from collections.abc import Sequence
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dependencies.pagination import PaginationParams
 from app.db.base import Base
 
 ModelT = TypeVar("ModelT", bound=Base)
@@ -31,6 +32,23 @@ class BaseRepository(Generic[ModelT]):
         query = select(self.model).offset(offset).limit(limit)
         result = await self.session.execute(query)
         return result.scalars().all()
+
+    async def count(self) -> int:
+        """Count the total number of records."""
+        query = select(func.count()).select_from(self.model)
+        result = await self.session.execute(query)
+        return int(result.scalar_one())
+
+    async def get_paginated(
+        self, params: PaginationParams
+    ) -> tuple[Sequence[ModelT], int]:
+        """
+        Fetch a paginated list of records and the total count.
+        Returns a tuple of (items, total_count).
+        """
+        total = await self.count()
+        items = await self.list_all(limit=params.limit, offset=params.offset)
+        return items, total
 
     async def create(self, **data: Any) -> ModelT:
         """Create a new record in the database."""
