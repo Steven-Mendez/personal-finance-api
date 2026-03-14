@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     db_user: str = Field(default="postgres")
     db_password: SecretStr = Field(default=SecretStr("postgres"))
     db_name: str = Field(default="finance")
+    db_pool_size: int = Field(
+        default=5, description="Number of permanent connections to keep."
+    )
+    db_max_overflow: int = Field(
+        default=10, description="Number of extra connections to allow during spikes."
+    )
 
     @property
     def database_url(self) -> SecretStr:
