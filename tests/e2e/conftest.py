@@ -15,7 +15,15 @@ from app.main import create_app
 @pytest.fixture(scope="function")
 def app() -> Generator[FastAPI, None, None]:
     _app = create_app()
-    _app.dependency_overrides[get_app_settings] = lambda: Settings(environment="test")
+    _app.dependency_overrides[get_app_settings] = lambda: Settings(
+        environment="test",
+        cognito_user_pool_id="us-east-1_test",
+        cognito_client_id="test-client-id",
+    )
+
+    # In E2E tests, we want to mock the state clients before lifespan starts
+    # so that Boto3 doesn't try to load real credentials.
+    _app.state.cognito_client = MagicMock()
 
     yield _app
 
@@ -24,6 +32,7 @@ def app() -> Generator[FastAPI, None, None]:
 
 @pytest.fixture(scope="function")
 def client(app: FastAPI) -> Generator[TestClient, None, None]:
+    # Use TestClient as a context manager to trigger lifespan events
     with TestClient(app) as test_client:
         yield test_client
 

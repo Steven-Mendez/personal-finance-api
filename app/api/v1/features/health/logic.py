@@ -1,11 +1,9 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 from structlog.stdlib import BoundLogger
-
-from app.core.config import Settings
 
 from .schemas import HealthStatus, ReadinessResponse, StatusLiteral
 
@@ -30,7 +28,12 @@ class HealthCheck(ABC):
 class ApiHealthCheck(HealthCheck):
     """Simple check to confirm the API service is reachable."""
 
+    def __init__(self, http_client: httpx.AsyncClient) -> None:
+        self.http_client = http_client
+
     async def check(self) -> tuple[str, StatusLiteral]:
+        # In a real app, this could check if the local server can make outbound calls
+        # or ping a local resource. For now, it's a heartbeat.
         return "api", "healthy"
 
 
@@ -39,30 +42,18 @@ class CognitoHealthCheck(HealthCheck):
 
     def __init__(
         self,
-        settings: Settings,
-        logger: BoundLogger,
-        http_client: httpx.AsyncClient,
+        cognito_client: Any,
+        user_pool_id: str,
     ) -> None:
-        self.settings = settings
-        self.logger = logger
-        self.http_client = http_client
+        self.cognito_client = cognito_client
+        self.user_pool_id = user_pool_id
 
     async def check(self) -> tuple[str, StatusLiteral]:
         try:
-            response = await self.http_client.get(
-                self.settings.cognito_jwks_url,
-                timeout=_DEPENDENCY_CHECK_TIMEOUT_SECONDS,
-            )
-            status: StatusLiteral = (
-                "healthy" if response.status_code == 200 else "unhealthy"
-            )
-            return "cognito", status
-        except Exception as e:
-            self.logger.error(
-                "Cognito health check failed",
-                jwks_url=self.settings.cognito_jwks_url,
-                error=str(e),
-            )
+            # We use the Cognito client to describe the user pool as a health check
+            self.cognito_client.describe_user_pool(UserPoolId=self.user_pool_id)
+            return "cognito", "healthy"
+        except Exception:
             return "cognito", "unhealthy"
 
 
@@ -94,8 +85,15 @@ class DefaultHealthService(HealthServiceInterface):
     Executes multiple health checks concurrently.
     """
 
-    def __init__(self, checks: list[HealthCheck]) -> None:
-        self.checks = checks
+    def __init__(
+        self,
+        api_check: ApiHealthCheck,
+        cognito_check: CognitoHealthCheck,
+        logger: BoundLogger,
+    ) -> None:
+        self.api_check = api_check
+        self.cognito_check = cognito_check
+        self.logger = logger
 
     def build_liveness_payload(self) -> HealthStatus:
         return HealthStatus(status="alive")
@@ -115,11 +113,11 @@ class DefaultHealthService(HealthServiceInterface):
         )
 
     async def check_dependencies(self) -> dict[str, StatusLiteral]:
-        if not self.checks:
-            return {}
-
+        # Run checks concurrently
         results = await asyncio.gather(
-            *[check.check() for check in self.checks], return_exceptions=True
+            self.api_check.check(),
+            self.cognito_check.check(),
+            return_exceptions=True,
         )
 
         dependencies: dict[str, StatusLiteral] = {}
@@ -127,5 +125,8 @@ class DefaultHealthService(HealthServiceInterface):
             if isinstance(result, tuple) and len(result) == 2:
                 name, status = result
                 dependencies[name] = status
+            elif isinstance(result, Exception):
+                # This should be handled by individual checks
+                self.logger.error("Health check error", error=str(result))
 
         return dependencies

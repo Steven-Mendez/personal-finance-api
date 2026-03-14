@@ -1,13 +1,11 @@
 from typing import Annotated, Any
 
-import boto3
 import httpx
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings
-from app.core.dependencies.http import get_http_client
 from app.core.dependencies.logging import get_logger
 from app.core.dependencies.settings import get_app_settings
 
@@ -19,20 +17,20 @@ from .providers.cognito.cognito_user_manager import CognitoUserManager
 reusable_oauth2 = HTTPBearer()
 
 
-def get_cognito_client(
-    settings: Annotated[Settings, Depends(get_app_settings)],
-) -> Any:
-    """Dependency to provide a Cognito Boto3 client."""
-    return boto3.client(
-        "cognito-idp",
-        region_name=settings.cognito_region,
-    )
+def get_cognito_client(request: Request) -> Any:
+    """Provides a pre-warmed Cognito client from the app state."""
+    return request.app.state.cognito_client
+
+
+def get_http_client_from_state(request: Request) -> httpx.AsyncClient:
+    """Provides a pre-warmed HTTP client from the app state."""
+    return request.app.state.http_client
 
 
 async def get_token_verifier(
     settings: Annotated[Settings, Depends(get_app_settings)],
     logger: Annotated[BoundLogger, Depends(get_logger)],
-    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client)],
+    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client_from_state)],
 ) -> TokenVerifier:
     """Dependency that provides a TokenVerifier interface."""
     return CognitoTokenVerifier(

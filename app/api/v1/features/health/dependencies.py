@@ -1,48 +1,35 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
-from fastapi import Depends
+from fastapi import Depends, Request
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings
-from app.core.dependencies.http import get_http_client
 from app.core.dependencies.logging import get_logger
 from app.core.dependencies.settings import get_app_settings
 
-from .logic import (
-    ApiHealthCheck,
-    CognitoHealthCheck,
-    DefaultHealthService,
-    HealthServiceInterface,
-)
+from .logic import ApiHealthCheck, CognitoHealthCheck, DefaultHealthService
 
 
-async def get_api_health_check() -> ApiHealthCheck:
-    """Dependency that provides an ApiHealthCheck."""
-    return ApiHealthCheck()
+def get_cognito_client_from_state(request: Request) -> Any:
+    """Provides a pre-warmed Cognito client from the app state."""
+    return request.app.state.cognito_client
 
 
-async def get_cognito_health_check(
-    settings: Annotated[Settings, Depends(get_app_settings)],
-    logger: Annotated[BoundLogger, Depends(get_logger)],
-    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client)],
-) -> CognitoHealthCheck:
-    """Dependency that provides a CognitoHealthCheck."""
-    return CognitoHealthCheck(
-        settings=settings,
-        logger=logger,
-        http_client=http_client,
-    )
+def get_http_client_from_state(request: Request) -> httpx.AsyncClient:
+    """Provides a pre-warmed HTTP client from the app state."""
+    return request.app.state.http_client
 
 
 async def get_health_service(
-    api_check: Annotated[ApiHealthCheck, Depends(get_api_health_check)],
-    cognito_check: Annotated[CognitoHealthCheck, Depends(get_cognito_health_check)],
-) -> HealthServiceInterface:
-    """Dependency that provides a HealthServiceInterface."""
+    settings: Annotated[Settings, Depends(get_app_settings)],
+    logger: Annotated[BoundLogger, Depends(get_logger)],
+    cognito_client: Annotated[Any, Depends(get_cognito_client_from_state)],
+    http_client: Annotated[httpx.AsyncClient, Depends(get_http_client_from_state)],
+) -> DefaultHealthService:
+    """Dependency that provides the health service."""
     return DefaultHealthService(
-        checks=[
-            api_check,
-            cognito_check,
-        ]
+        api_check=ApiHealthCheck(http_client),
+        cognito_check=CognitoHealthCheck(cognito_client, settings.cognito_user_pool_id),
+        logger=logger,
     )
