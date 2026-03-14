@@ -1,5 +1,6 @@
 .PHONY: help sync run test test-unit test-integration test-e2e test-all test-cov \
-        docker-build docker-run docker-stop docker-up docker-down docker-restart docker-logs
+        docker-build docker-run docker-stop docker-up docker-down docker-restart docker-logs \
+        ruff mypy precommit
 
 APP_HOST ?= 127.0.0.1
 APP_PORT ?= 8000
@@ -65,6 +66,13 @@ help:
 	printf "      Restart Docker Compose services (down then up)\n"; \
 	printf "  %smake docker-logs%s\n" "$$GREEN" "$$RESET"; \
 	printf "      Tail logs from Docker Compose api service\n\n"; \
+	printf "%sCode quality%s\n" "$$BOLD$$CYAN" "$$RESET"; \
+	printf "  %smake ruff%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Run Ruff linter (--fix) then Ruff formatter on the whole codebase\n"; \
+	printf "  %smake mypy%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Run Mypy static type-checker against the app package\n"; \
+	printf "  %smake precommit%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Run all pre-commit hooks against every file in the repo\n\n"; \
 	printf "%sVariable overrides%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  APP_ENTRYPOINT='%s'  FastAPI entrypoint used by make run\n" "$(APP_ENTRYPOINT)"; \
 	printf "  APP_HOST='%s'        Host used by make run\n" "$(APP_HOST)"; \
@@ -131,3 +139,13 @@ docker-restart: docker-down docker-up
 
 docker-logs:
 	$(DOCKER_COMPOSE) logs -f api
+
+ruff:
+	$(UV_RUN) ruff check --fix .
+	$(UV_RUN) ruff format .
+
+mypy:
+	$(UV_RUN) mypy app
+
+precommit:
+	$(UV_RUN) pre-commit run --all-files

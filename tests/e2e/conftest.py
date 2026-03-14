@@ -31,7 +31,9 @@ def unhealthy_client(app: FastAPI) -> Generator[TestClient, None, None]:
     async def override_unhealthy_dependencies() -> dict[str, str]:
         return {"api": "unhealthy"}
 
-    app.dependency_overrides[get_readiness_dependencies] = override_unhealthy_dependencies
+    app.dependency_overrides[get_readiness_dependencies] = (
+        override_unhealthy_dependencies
+    )
 
     with TestClient(app) as test_client:
         yield test_client

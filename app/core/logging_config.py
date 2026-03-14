@@ -39,7 +39,9 @@ def setup_unified_logging() -> None:
         foreign_pre_chain=shared_processors,
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.processors.JSONRenderer() if is_production else structlog.dev.ConsoleRenderer(),
+            structlog.processors.JSONRenderer()
+            if is_production
+            else structlog.dev.ConsoleRenderer(),
         ],
     )
 

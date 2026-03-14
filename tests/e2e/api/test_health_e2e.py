@@ -15,7 +15,9 @@ def test_liveness_endpoint_returns_alive(client: TestClient) -> None:
 
 
 @pytest.mark.e2e
-def test_readiness_endpoint_returns_ready_when_dependencies_healthy(client: TestClient) -> None:
+def test_readiness_endpoint_returns_ready_when_dependencies_healthy(
+    client: TestClient,
+) -> None:
     # Given: all dependencies are healthy (default in the test environment)
 
     # When
@@ -29,7 +31,9 @@ def test_readiness_endpoint_returns_ready_when_dependencies_healthy(client: Test
 
 
 @pytest.mark.e2e
-def test_readiness_endpoint_returns_503_when_dependencies_unhealthy(unhealthy_client: TestClient) -> None:
+def test_readiness_endpoint_returns_503_when_dependencies_unhealthy(
+    unhealthy_client: TestClient,
+) -> None:
     # Given: the readiness dependency check is overridden to report unhealthy
 
     # When

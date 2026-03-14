@@ -3,7 +3,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.health import build_liveness_payload, build_readiness_payload, check_dependencies
+from app.services.health import (
+    build_liveness_payload,
+    build_readiness_payload,
+    check_dependencies,
+)
 
 
 def test_build_liveness_payload_returns_alive_status() -> None:

@@ -1,10 +1,11 @@
 import time
+from collections.abc import Awaitable, Callable
 
 import structlog
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -24,7 +25,9 @@ def create_app() -> FastAPI:
     # Starlette's reversed build order makes CorrelationIdMiddleware the outermost
     # wrapper — i.e. it executes first and populates correlation_id before we read it.
     @app.middleware("http")
-    async def logging_middleware(request: Request, call_next):
+    async def logging_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
             request_id=correlation_id.get(),
@@ -48,7 +51,9 @@ def create_app() -> FastAPI:
     app.add_middleware(CorrelationIdMiddleware)
 
     @app.exception_handler(Exception)
-    async def global_unhandled_exception_handler(request: Request, exc: Exception):
+    async def global_unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger.exception(
             "Unhandled server error occurred",
             url=str(request.url),
@@ -58,7 +63,9 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={
-                "detail": "An internal server error occurred. Our team has been notified.",
+                "detail": (
+                    "An internal server error occurred. Our team has been notified."
+                ),
                 "request_id": correlation_id.get(),
             },
         )

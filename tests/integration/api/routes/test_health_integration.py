@@ -17,7 +17,9 @@ def test_liveness_route_returns_alive(client: TestClient) -> None:
 
 
 @pytest.mark.integration
-def test_readiness_route_returns_ready_when_health_check_passes(client: TestClient) -> None:
+def test_readiness_route_returns_ready_when_health_check_passes(
+    client: TestClient,
+) -> None:
     # Given: all internal health checks pass (default behaviour)
 
     # When
@@ -29,7 +31,9 @@ def test_readiness_route_returns_ready_when_health_check_passes(client: TestClie
 
 
 @pytest.mark.integration
-def test_readiness_route_returns_503_when_health_check_raises(client: TestClient) -> None:
+def test_readiness_route_returns_503_when_health_check_raises(
+    client: TestClient,
+) -> None:
     # Given: the low-level check_api call raises an unexpected error,
     # while check_dependencies, build_readiness_payload, and the router
     # all run with their real implementations
@@ -48,7 +52,9 @@ def test_readiness_route_returns_503_when_health_check_raises(client: TestClient
 
 
 @pytest.mark.integration
-def test_readiness_route_returns_503_when_health_check_returns_false(client: TestClient) -> None:
+def test_readiness_route_returns_503_when_health_check_returns_false(
+    client: TestClient,
+) -> None:
     # Given: the low-level check_api call returns False (e.g. a downstream
     # service is reachable but reports unhealthy)
     async def degraded_check_api() -> bool:

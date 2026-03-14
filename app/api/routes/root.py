@@ -9,5 +9,7 @@ router = APIRouter()
 
 
 @router.get("/")
-def read_root(settings: Annotated[Settings, Depends(get_app_settings)]) -> dict[str, str]:
+def read_root(
+    settings: Annotated[Settings, Depends(get_app_settings)],
+) -> dict[str, str]:
     return {"message": settings.app_name, "environment": settings.environment}

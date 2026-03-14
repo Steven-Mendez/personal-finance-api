@@ -11,7 +11,11 @@ def build_liveness_payload() -> dict[str, str]:
 
 
 def build_readiness_payload(dependencies: dict[str, str]) -> dict[str, object]:
-    overall_status = "ready" if all(state == "healthy" for state in dependencies.values()) else "unready"
+    overall_status = (
+        "ready"
+        if all(state == "healthy" for state in dependencies.values())
+        else "unready"
+    )
     return {
         "status": overall_status,
         "dependencies": dependencies,
@@ -24,7 +28,7 @@ async def check_api() -> bool:
 
 async def check_dependencies() -> dict[str, str]:
     try:
-        api_result, = await asyncio.wait_for(
+        (api_result,) = await asyncio.wait_for(
             asyncio.gather(check_api(), return_exceptions=True),
             timeout=_DEPENDENCY_CHECK_TIMEOUT_SECONDS,
         )
