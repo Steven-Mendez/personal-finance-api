@@ -4,7 +4,7 @@
 
 APP_HOST ?= 127.0.0.1
 APP_PORT ?= 8000
-APP_ENTRYPOINT ?= main.py
+APP_ENTRYPOINT ?= app/main.py
 UV ?= uv
 UV_RUN ?= $(UV) run
 SYNC_FLAGS ?= --all-groups
