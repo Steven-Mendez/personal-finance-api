@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
-from .schemas import TokenResponse, UserResponse
+from .schemas import BaseJWTPayload, TokenResponse, UserResponse
 
 
 class Authenticator(ABC):
@@ -12,9 +11,7 @@ class Authenticator(ABC):
 
 class TokenVerifier(ABC):
     @abstractmethod
-    async def verify_token(self, token: str) -> dict[str, Any]:
-        # Claims vary too much to have a single static model,
-        # but we can improve this later if needed.
+    async def verify_token(self, token: str) -> BaseJWTPayload:
         pass
 
 

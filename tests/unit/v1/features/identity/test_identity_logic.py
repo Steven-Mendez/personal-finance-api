@@ -12,7 +12,11 @@ from app.api.v1.features.identity.providers.cognito.cognito_token_verifier impor
 from app.api.v1.features.identity.providers.cognito.cognito_user_manager import (
     CognitoUserManager,
 )
-from app.api.v1.features.identity.schemas import TokenResponse, UserResponse
+from app.api.v1.features.identity.schemas import (
+    BaseJWTPayload,
+    TokenResponse,
+    UserResponse,
+)
 from app.core.config import Settings
 
 
@@ -94,6 +98,8 @@ class TestCognitoTokenVerifier:
                 f"https://cognito-idp.{settings.cognito_region}.amazonaws.com/"
                 f"{settings.cognito_user_pool_id}"
             ),
+            "exp": 1,
+            "iat": 1,
         }
 
         with (
@@ -108,7 +114,9 @@ class TestCognitoTokenVerifier:
 
             result = await verifier.verify_token(token)
 
-            assert result == claims
+            assert isinstance(result, BaseJWTPayload)
+            assert result.sub == claims["sub"]
+            assert result.email == claims["email"]
 
     @pytest.mark.asyncio
     async def test_verify_token_invalid_kid(

@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
@@ -10,7 +10,13 @@ from .dependencies import (
     get_user_manager,
 )
 from .logic import Authenticator, UserManager
-from .schemas import TokenResponse, UserCreate, UserListResponse, UserResponse
+from .schemas import (
+    BaseJWTPayload,
+    TokenResponse,
+    UserCreate,
+    UserListResponse,
+    UserResponse,
+)
 
 router = APIRouter()
 
@@ -27,10 +33,10 @@ async def login(
     return ResponseEnvelope(data=token_data)
 
 
-@router.get("/me", response_model=ResponseEnvelope[dict[str, Any]])
+@router.get("/me", response_model=ResponseEnvelope[BaseJWTPayload])
 async def get_me(
-    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
-) -> ResponseEnvelope[dict[str, Any]]:
+    current_user: Annotated[BaseJWTPayload, Depends(get_current_user)],
+) -> ResponseEnvelope[BaseJWTPayload]:
     """Endpoint to retrieve details of the currently authenticated user."""
     return ResponseEnvelope(data=current_user)
 
@@ -54,7 +60,7 @@ async def create_user(
 @router.get("/users", response_model=ResponseEnvelope[UserListResponse])
 async def list_users(
     user_manager: Annotated[UserManager, Depends(get_user_manager)],
-    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+    current_user: Annotated[BaseJWTPayload, Depends(get_current_user)],
 ) -> ResponseEnvelope[UserListResponse]:
     """Endpoint for administrators to list all available user accounts."""
     users = await user_manager.list_users()

@@ -25,7 +25,14 @@ def test_get_me_unauthorized(client: TestClient) -> None:
 
 def test_get_me_success(client: TestClient) -> None:
     # Override dependency to mock successful authentication
-    client.app.dependency_overrides[get_current_user] = lambda: {"sub": "test_user_id"}
+    mock_claims = {
+        "sub": "test_user_id",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/pool",
+        "aud": "client_id",
+        "exp": 9999999999,
+        "iat": 1111111111,
+    }
+    client.app.dependency_overrides[get_current_user] = lambda: mock_claims
 
     try:
         response = client.get(
@@ -34,7 +41,7 @@ def test_get_me_success(client: TestClient) -> None:
         assert response.status_code == status.HTTP_200_OK
         envelope = response.json()
         assert envelope["status"] == "success"
-        assert envelope["data"] == {"sub": "test_user_id"}
+        assert envelope["data"]["sub"] == "test_user_id"
     finally:
         client.app.dependency_overrides.clear()
 

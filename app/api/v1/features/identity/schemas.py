@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, SecretStr
+from pydantic import BaseModel, EmailStr, Field, SecretStr
 
 
 class UserCreate(BaseModel):
@@ -35,3 +35,22 @@ class UserListResponse(BaseModel):
     """Schema for a list of users."""
 
     users: list[UserResponse]
+
+
+class BaseJWTPayload(BaseModel):
+    """
+    Standard OIDC JWT claims.
+    Allows extra fields to accommodate dynamic Cognito attributes.
+    """
+
+    sub: str
+    iss: str
+    aud: str | list[str]
+    exp: int
+    iat: int
+    email: EmailStr | None = None
+    username: str | None = Field(None, alias="cognito:username")
+
+    model_config = {
+        "extra": "allow",  # Dynamic claims are preserved in the model
+    }

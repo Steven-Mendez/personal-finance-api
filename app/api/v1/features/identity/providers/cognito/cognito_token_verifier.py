@@ -9,6 +9,7 @@ from app.core.config import Settings
 
 from ...exceptions import InvalidTokenError
 from ...logic import TokenVerifier
+from ...schemas import BaseJWTPayload
 
 
 class CognitoTokenVerifier(TokenVerifier):
@@ -40,7 +41,7 @@ class CognitoTokenVerifier(TokenVerifier):
             self._jwks = cast(dict[str, Any], response.json())
         return self._jwks
 
-    async def verify_token(self, token: str) -> dict[str, Any]:
+    async def verify_token(self, token: str) -> BaseJWTPayload:
         """Verify token signature and claims against Cognito."""
         try:
             headers = cast(dict[str, Any], jwt.get_unverified_headers(token))
@@ -74,7 +75,7 @@ class CognitoTokenVerifier(TokenVerifier):
             if claims.get("iss") != expected_iss:
                 raise ValueError("Token issuer mismatch")
 
-            return claims
+            return BaseJWTPayload(**claims)
 
         except Exception as e:
             self.logger.error("Token verification failed", error=str(e))

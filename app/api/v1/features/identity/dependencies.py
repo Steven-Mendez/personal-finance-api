@@ -15,6 +15,7 @@ from .logic import Authenticator, TokenVerifier, UserManager
 from .providers.cognito.cognito_authenticator import CognitoAuthenticator
 from .providers.cognito.cognito_token_verifier import CognitoTokenVerifier
 from .providers.cognito.cognito_user_manager import CognitoUserManager
+from .schemas import BaseJWTPayload
 
 reusable_oauth2 = HTTPBearer()
 
@@ -61,6 +62,6 @@ async def get_authenticator(
 async def get_current_user(
     token: Annotated[HTTPAuthorizationCredentials, Depends(reusable_oauth2)],
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
-) -> dict[str, Any]:
+) -> BaseJWTPayload:
     """Dependency to retrieve the current user from a JWT."""
     return await verifier.verify_token(token.credentials)

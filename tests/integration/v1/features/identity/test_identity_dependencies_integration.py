@@ -11,11 +11,18 @@ from app.api.v1.features.identity.exceptions import InvalidTokenError
 async def test_get_current_user_success() -> None:
     token = HTTPAuthorizationCredentials(scheme="Bearer", credentials="valid_token")
     mock_auth_service = AsyncMock()
-    mock_auth_service.verify_token.return_value = {"sub": "user_id"}
+    mock_claims = {
+        "sub": "user_id",
+        "iss": "iss",
+        "aud": "aud",
+        "exp": 1,
+        "iat": 1,
+    }
+    mock_auth_service.verify_token.return_value = mock_claims
 
     user = await get_current_user(token, mock_auth_service)
 
-    assert user == {"sub": "user_id"}
+    assert user == mock_claims
     mock_auth_service.verify_token.assert_awaited_once_with("valid_token")
 
 
