@@ -27,7 +27,6 @@ _settings = get_settings()
 # Scheme 1: Manual Bearer token input (First in list)
 bearer_scheme = HTTPBearer(
     auto_error=False,
-    description="Paste a JWT token directly.",
 )
 bearer_scheme.scheme_name = "1. Bearer Token"
 
@@ -40,7 +39,6 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
         "email": "email",
         "profile": "profile",
     },
-    description="Login via Cognito Hosted UI.",
 )
 oauth2_scheme.scheme_name = "2. Cognito Login"
 
