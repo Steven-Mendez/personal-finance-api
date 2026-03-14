@@ -19,7 +19,7 @@ async def login(
     authenticator: Annotated[Authenticator, Depends(get_authenticator)],
 ) -> dict[str, Any]:
     """Endpoint to authenticate a user and return tokens."""
-    return await authenticator.login(user_in.email, user_in.password)
+    return await authenticator.login(user_in.email, user_in.password.get_secret_value())
 
 
 @router.get("/me")
@@ -36,7 +36,9 @@ async def create_user(
     user_manager: Annotated[UserManager, Depends(get_user_manager)],
 ) -> dict[str, Any]:
     """Endpoint for administrators to create a new user account."""
-    user = await user_manager.create_user(user_in.email, user_in.password)
+    user = await user_manager.create_user(
+        user_in.email, user_in.password.get_secret_value()
+    )
     return {"user": user}
 
 
