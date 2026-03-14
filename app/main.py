@@ -74,6 +74,12 @@ def create_app() -> FastAPI:
             "and budgeting, built with Python and FastAPI."
         ),
         version="1.0.0",
+        swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
+        swagger_ui_init_oauth={
+            "clientId": settings.cognito_app_client_id,
+            "usePkceWithAuthorizationCodeGrant": True,
+            "scopes": "openid email profile",
+        },
         openapi_tags=[
             {
                 "name": "v1",

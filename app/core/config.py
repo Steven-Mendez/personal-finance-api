@@ -42,6 +42,25 @@ class Settings(BaseSettings):
     cognito_region: str = Field(default="us-east-1")
     cognito_user_pool_id: str = Field(default="us-east-1_example")
     cognito_app_client_id: str = Field(default="example_client_id")
+    cognito_domain: str | None = Field(
+        default=None, description="Cognito custom or prefix domain."
+    )
+
+    @property
+    def cognito_oauth_authorize_url(self) -> str:
+        """Derive the Cognito authorize URL."""
+        return (
+            f"https://{self.cognito_domain}.auth.{self.cognito_region}"
+            ".amazoncognito.com/oauth2/authorize"
+        )
+
+    @property
+    def cognito_oauth_token_url(self) -> str:
+        """Derive the Cognito token URL."""
+        return (
+            f"https://{self.cognito_domain}.auth.{self.cognito_region}"
+            ".amazoncognito.com/oauth2/token"
+        )
 
     # Versioning
     commit_sha: str = Field(

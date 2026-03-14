@@ -2,10 +2,10 @@ from typing import Annotated, Any
 
 import httpx
 from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import OAuth2AuthorizationCodeBearer
 from structlog.stdlib import BoundLogger
 
-from app.core.config import Settings
+from app.core.config import Settings, get_settings
 from app.core.dependencies.cognito import get_cognito_client
 from app.core.dependencies.http import get_http_client
 from app.core.dependencies.logging import get_logger
@@ -17,7 +17,18 @@ from .providers.cognito.cognito_token_verifier import CognitoTokenVerifier
 from .providers.cognito.cognito_user_manager import CognitoUserManager
 from .schemas import BaseJWTPayload
 
-reusable_oauth2 = HTTPBearer()
+# Initialize settings to build OAuth2 scheme
+_settings = get_settings()
+
+reusable_oauth2 = OAuth2AuthorizationCodeBearer(
+    authorizationUrl=_settings.cognito_oauth_authorize_url,
+    tokenUrl=_settings.cognito_oauth_token_url,
+    scopes={
+        "openid": "OpenID Connect",
+        "email": "Read email address",
+        "profile": "Read user profile",
+    },
+)
 
 
 async def get_token_verifier(
@@ -60,8 +71,8 @@ async def get_authenticator(
 
 
 async def get_current_user(
-    token: Annotated[HTTPAuthorizationCredentials, Depends(reusable_oauth2)],
+    token: Annotated[str, Depends(reusable_oauth2)],
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
 ) -> BaseJWTPayload:
     """Dependency to retrieve the current user from a JWT."""
-    return await verifier.verify_token(token.credentials)
+    return await verifier.verify_token(token)
