@@ -1,4 +1,5 @@
-.PHONY: help sync run test test-unit test-integration test-e2e test-all test-cov
+.PHONY: help sync run test test-unit test-integration test-e2e test-all test-cov \
+        docker-build docker-run docker-stop docker-up docker-down docker-restart docker-logs
 
 APP_HOST ?= 127.0.0.1
 APP_PORT ?= 8000
@@ -10,6 +11,12 @@ PYTEST_FLAGS ?= -ra --strict-markers --maxfail=1
 TEST_ARGS ?= -v
 E2E_TEST_ARGS ?= $(TEST_ARGS)
 ALL_TEST_ARGS ?= $(TEST_ARGS)
+
+DOCKER_IMAGE ?= personal-finance-api
+DOCKER_TAG ?= latest
+DOCKER_CONTAINER ?= personal-finance-api
+DOCKER_PORT ?= 8000
+DOCKER_COMPOSE ?= docker compose
 
 help:
 	@BOLD=$$(printf '\033[1m'); \
@@ -43,6 +50,21 @@ help:
 	printf "      Run full test suite (unit + integration + E2E)\n"; \
 	printf "  %smake test-cov%s\n" "$$GREEN" "$$RESET"; \
 	printf "      Run full test suite with coverage report\n\n"; \
+	printf "%sDocker commands%s\n" "$$BOLD$$CYAN" "$$RESET"; \
+	printf "  %smake docker-build%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Build the Docker image (%s:%s)\n" "$(DOCKER_IMAGE)" "$(DOCKER_TAG)"; \
+	printf "  %smake docker-run%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Run a standalone container on port %s\n" "$(DOCKER_PORT)"; \
+	printf "  %smake docker-stop%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Stop the standalone container\n"; \
+	printf "  %smake docker-up%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Start services with Docker Compose (detached)\n"; \
+	printf "  %smake docker-down%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Stop and remove Docker Compose services\n"; \
+	printf "  %smake docker-restart%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Restart Docker Compose services (down then up)\n"; \
+	printf "  %smake docker-logs%s\n" "$$GREEN" "$$RESET"; \
+	printf "      Tail logs from Docker Compose api service\n\n"; \
 	printf "%sVariable overrides%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  APP_ENTRYPOINT='%s'  FastAPI entrypoint used by make run\n" "$(APP_ENTRYPOINT)"; \
 	printf "  APP_HOST='%s'        Host used by make run\n" "$(APP_HOST)"; \
@@ -50,12 +72,17 @@ help:
 	printf "  PYTEST_FLAGS='%s'  Base pytest flags\n" "$(PYTEST_FLAGS)"; \
 	printf "  TEST_ARGS='%s'       Extra args for test, test-unit, test-integration\n" "$(TEST_ARGS)"; \
 	printf "  E2E_TEST_ARGS='%s'   Extra args for test-e2e\n" "$(E2E_TEST_ARGS)"; \
-	printf "  ALL_TEST_ARGS='%s'   Extra args for test-all\n\n" "$(ALL_TEST_ARGS)"; \
+	printf "  ALL_TEST_ARGS='%s'   Extra args for test-all\n" "$(ALL_TEST_ARGS)"; \
+	printf "  DOCKER_IMAGE='%s'  Docker image name\n" "$(DOCKER_IMAGE)"; \
+	printf "  DOCKER_TAG='%s'      Docker image tag\n" "$(DOCKER_TAG)"; \
+	printf "  DOCKER_PORT='%s'     Host port for docker-run\n\n" "$(DOCKER_PORT)"; \
 	printf "%sExamples%s\n" "$$BOLD$$CYAN" "$$RESET"; \
 	printf "  %smake run APP_HOST=0.0.0.0 APP_PORT=9000%s\n" "$$GREEN" "$$RESET"; \
 	printf "  %smake test TEST_ARGS='-q'%s\n" "$$GREEN" "$$RESET"; \
 	printf "  %smake test-e2e E2E_TEST_ARGS='-q -k readiness'%s\n" "$$GREEN" "$$RESET"; \
-	printf "  %smake test-all ALL_TEST_ARGS='-q'%s\n\n" "$$GREEN" "$$RESET"; \
+	printf "  %smake test-all ALL_TEST_ARGS='-q'%s\n" "$$GREEN" "$$RESET"; \
+	printf "  %smake docker-build DOCKER_TAG=v1.0.0%s\n" "$$GREEN" "$$RESET"; \
+	printf "  %smake docker-run DOCKER_PORT=9000%s\n\n" "$$GREEN" "$$RESET"; \
 	printf "Run %smake help%s anytime to print this guide.\n\n" "$$GREEN" "$$RESET"
 
 sync:
@@ -81,3 +108,26 @@ test-all:
 
 test-cov:
 	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS) --cov
+
+docker-build:
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+docker-run:
+	docker run --rm -d \
+		--name $(DOCKER_CONTAINER) \
+		-p $(DOCKER_PORT):8000 \
+		$(DOCKER_IMAGE):$(DOCKER_TAG)
+
+docker-stop:
+	docker stop $(DOCKER_CONTAINER)
+
+docker-up:
+	$(DOCKER_COMPOSE) up --build -d
+
+docker-down:
+	$(DOCKER_COMPOSE) down
+
+docker-restart: docker-down docker-up
+
+docker-logs:
+	$(DOCKER_COMPOSE) logs -f api

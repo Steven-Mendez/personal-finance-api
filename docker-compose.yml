@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Personal Finance API
+      - ENVIRONMENT=development
+    # Mount local code for live reloading during development
+    volumes:
+      - ./app:/app/app
