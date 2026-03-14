@@ -3,6 +3,7 @@ from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions.base_app_exception import BaseAppException
@@ -13,6 +14,22 @@ logger = structlog.get_logger()
 
 def setup_exception_handlers(app: FastAPI) -> None:
     """Register custom exception handlers for the application."""
+
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(
+        request: Request, exc: RateLimitExceeded
+    ) -> JSONResponse:
+        envelope = ResponseEnvelope[None](
+            status="error",
+            error=ErrorDetail(
+                message="Rate limit exceeded. Please try again later.",
+                error_code="RATE_LIMIT_EXCEEDED",
+            ),
+        )
+        return JSONResponse(
+            status_code=429,
+            content=envelope.model_dump(exclude_none=True, mode="json"),
+        )
 
     @app.exception_handler(IntegrityError)
     async def integrity_error_handler(
