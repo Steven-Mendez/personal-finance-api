@@ -43,7 +43,7 @@ def setup_exception_handlers(app: FastAPI) -> None:
             status="error",
             error=ErrorDetail(
                 message=(
-                    "An internal server error occurred. " "Our team has been notified."
+                    "An internal server error occurred. Our team has been notified."
                 ),
                 error_code="INTERNAL_SERVER_ERROR",
                 data={"request_id": correlation_id.get()},

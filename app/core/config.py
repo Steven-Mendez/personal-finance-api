@@ -17,13 +17,20 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database
-    # Use SecretStr for the database URL to prevent accidental logging of credentials
-    database_url: SecretStr = Field(
-        default=SecretStr(
-            "postgresql+asyncpg://postgres:postgres@localhost:5432/finance"
-        ),
-        description="The full SQLAlchemy database URL.",
-    )
+    db_host: str = Field(default="localhost")
+    db_port: int = Field(default=5432)
+    db_user: str = Field(default="postgres")
+    db_password: SecretStr = Field(default=SecretStr("postgres"))
+    db_name: str = Field(default="finance")
+
+    @property
+    def database_url(self) -> SecretStr:
+        """Construct the full SQLAlchemy database URL from components."""
+        return SecretStr(
+            f"postgresql+asyncpg://{self.db_user}:"
+            f"{self.db_password.get_secret_value()}@{self.db_host}:"
+            f"{self.db_port}/{self.db_name}"
+        )
 
     # AWS Cognito
     cognito_region: str = Field(default="us-east-1")

@@ -1,10 +1,11 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import boto3
 import httpx
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -86,7 +87,11 @@ def create_app() -> FastAPI:
 
     # Initialize rate limiting state
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+    @app.exception_handler(RateLimitExceeded)
+    def rate_limit_exceeded_handler(request: Request, exc: Any) -> Response:
+        """Standard handler for rate limit exceeded errors."""
+        return _rate_limit_exceeded_handler(request, exc)
 
     # Register Middlewares
     setup_middleware(app)
