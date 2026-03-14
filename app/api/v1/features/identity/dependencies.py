@@ -24,19 +24,25 @@ from .schemas import BaseJWTPayload
 # Initialize settings to build OAuth2 scheme
 _settings = get_settings()
 
-# Scheme 1: Manual Bearer token input (for scripts/CLI)
-bearer_scheme = HTTPBearer(auto_error=False)
+# Scheme 1: Manual Bearer token input (First in list)
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+    description="Paste a JWT token directly.",
+)
+bearer_scheme.scheme_name = "1. Bearer Token"
 
-# Scheme 2: Interactive OAuth2 redirect flow (Cognito Hosted UI)
+# Scheme 2: Interactive OAuth2 redirect flow (Second in list)
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
     authorizationUrl=_settings.cognito_oauth_authorize_url,
     tokenUrl=_settings.cognito_oauth_token_url,
     scopes={
-        "openid": "OpenID",
-        "email": "Email",
-        "profile": "Profile",
+        "openid": "openid",
+        "email": "email",
+        "profile": "profile",
     },
+    description="Login via Cognito Hosted UI.",
 )
+oauth2_scheme.scheme_name = "2. Cognito Login"
 
 
 async def get_token_verifier(
