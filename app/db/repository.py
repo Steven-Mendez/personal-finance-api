@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies.pagination import PaginationParams
+from app.core.exceptions.base_app_exception import NotFoundError
 from app.db.base import Base
 
 ModelT = TypeVar("ModelT", bound=Base)
@@ -26,6 +27,18 @@ class BaseRepository(Generic[ModelT]):
         query = select(self.model).where(self.model.id == id)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
+
+    async def get_by_id_or_raise(self, id: UUID) -> ModelT:
+        """
+        Fetch a single record by its UUID or raise a NotFoundError.
+        """
+        instance = await self.get_by_id(id)
+        if not instance:
+            raise NotFoundError(
+                message=f"{self.model.__name__} with id {id} not found",
+                data={"id": str(id)},
+            )
+        return instance
 
     async def list_all(self, limit: int = 100, offset: int = 0) -> Sequence[ModelT]:
         """Fetch a list of records with pagination."""

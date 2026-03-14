@@ -42,6 +42,7 @@ def setup_middleware(app: FastAPI) -> None:
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
         )
+        response.headers["X-App-Version"] = settings.commit_sha
         return response
 
     # Logging middleware

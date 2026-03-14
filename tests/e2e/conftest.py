@@ -18,7 +18,7 @@ def app() -> Generator[FastAPI, None, None]:
     _app.dependency_overrides[get_app_settings] = lambda: Settings(
         environment="test",
         cognito_user_pool_id="us-east-1_test",
-        cognito_client_id="test-client-id",
+        cognito_app_client_id="test-client-id",
     )
 
     # In E2E tests, we want to mock the state clients before lifespan starts

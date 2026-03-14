@@ -19,3 +19,17 @@ class BaseAppException(Exception):
         self.error_code = error_code
         self.data = data
         super().__init__(self.message)
+
+
+class NotFoundError(BaseAppException):
+    """Exception raised when a requested resource is not found."""
+
+    def __init__(
+        self, message: str = "Resource not found", data: dict[str, Any] | None = None
+    ):
+        super().__init__(
+            message=message,
+            status_code=404,
+            error_code="NOT_FOUND",
+            data=data,
+        )
