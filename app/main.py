@@ -16,6 +16,7 @@ from app.api.router import router as api_router
 from app.core.config import get_settings
 from app.core.exceptions.base_app_exception import BaseAppException
 from app.core.logging_config import setup_unified_logging
+from app.core.observability import setup_observability
 from app.db.session import engine
 
 setup_unified_logging()
@@ -53,7 +54,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title=settings.app_name, lifespan=lifespan)
+    app = FastAPI(
+        title=settings.app_name,
+        description=(
+            "A robust foundation for a Personal Finance Tracking and Budgeting API."
+        ),
+        version="1.0.0",
+        contact={
+            "name": "Personal Finance API Support",
+            "email": "support@example.com",
+        },
+        license_info={
+            "name": "Proprietary",
+        },
+        lifespan=lifespan,
+    )
 
     # Security: CORS Middleware
     app.add_middleware(
@@ -63,6 +78,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Observability: Prometheus Instrumentation
+    setup_observability(app)
 
     # Security: Custom Security Headers Middleware
     @app.middleware("http")
