@@ -73,13 +73,6 @@ def create_app() -> FastAPI:
             "A robust foundation for a Personal Finance Tracking and Budgeting API."
         ),
         version="1.0.0",
-        contact={
-            "name": "Personal Finance API Support",
-            "email": "support@example.com",
-        },
-        license_info={
-            "name": "Proprietary",
-        },
         openapi_tags=[
             {
                 "name": "v1",
