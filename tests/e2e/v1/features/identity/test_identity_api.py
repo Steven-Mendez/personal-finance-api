@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock
 
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -9,12 +8,6 @@ from app.api.v1.features.identity.dependencies import (
     get_current_user,
     get_user_manager,
 )
-from app.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def test_get_me_unauthorized(client: TestClient) -> None:

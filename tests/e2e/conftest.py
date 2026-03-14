@@ -24,6 +24,7 @@ def app() -> Generator[FastAPI, None, None]:
     # In E2E tests, we want to mock the state clients before lifespan starts
     # so that Boto3 doesn't try to load real credentials.
     _app.state.cognito_client = MagicMock()
+    _app.state.http_client = AsyncMock()
 
     yield _app
 

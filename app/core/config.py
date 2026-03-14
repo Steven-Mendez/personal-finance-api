@@ -49,16 +49,18 @@ class Settings(BaseSettings):
     @property
     def cognito_oauth_authorize_url(self) -> str:
         """Derive the Cognito authorize URL."""
+        domain = self.cognito_domain or "your-domain"
         return (
-            f"https://{self.cognito_domain}.auth.{self.cognito_region}"
+            f"https://{domain}.auth.{self.cognito_region}"
             ".amazoncognito.com/oauth2/authorize"
         )
 
     @property
     def cognito_oauth_token_url(self) -> str:
         """Derive the Cognito token URL."""
+        domain = self.cognito_domain or "your-domain"
         return (
-            f"https://{self.cognito_domain}.auth.{self.cognito_region}"
+            f"https://{domain}.auth.{self.cognito_region}"
             ".amazoncognito.com/oauth2/token"
         )
 

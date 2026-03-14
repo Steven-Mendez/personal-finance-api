@@ -19,7 +19,8 @@ async def test_get_current_user_success() -> None:
     }
     mock_auth_service.verify_token.return_value = mock_claims
 
-    user = await get_current_user(token, mock_auth_service)
+    # Test via oauth2_token parameter
+    user = await get_current_user(mock_auth_service, oauth2_token=token)
 
     assert user == mock_claims
     mock_auth_service.verify_token.assert_awaited_once_with("valid_token")
@@ -32,6 +33,6 @@ async def test_get_current_user_invalid_token() -> None:
     mock_auth_service.verify_token.side_effect = InvalidTokenError("Invalid token")
 
     with pytest.raises(InvalidTokenError) as exc_info:
-        await get_current_user(token, mock_auth_service)
+        await get_current_user(mock_auth_service, oauth2_token=token)
 
     assert str(exc_info.value) == "Invalid token"

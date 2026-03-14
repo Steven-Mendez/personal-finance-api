@@ -1,8 +1,12 @@
 from typing import Annotated, Any
 
 import httpx
-from fastapi import Depends
-from fastapi.security import OAuth2AuthorizationCodeBearer
+from fastapi import Depends, HTTPException
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+    OAuth2AuthorizationCodeBearer,
+)
 from structlog.stdlib import BoundLogger
 
 from app.core.config import Settings, get_settings
@@ -20,13 +24,17 @@ from .schemas import BaseJWTPayload
 # Initialize settings to build OAuth2 scheme
 _settings = get_settings()
 
-reusable_oauth2 = OAuth2AuthorizationCodeBearer(
+# Scheme 1: Manual Bearer token input (for scripts/CLI)
+bearer_scheme = HTTPBearer(auto_error=False)
+
+# Scheme 2: Interactive OAuth2 redirect flow (Cognito Hosted UI)
+oauth2_scheme = OAuth2AuthorizationCodeBearer(
     authorizationUrl=_settings.cognito_oauth_authorize_url,
     tokenUrl=_settings.cognito_oauth_token_url,
     scopes={
-        "openid": "OpenID Connect",
-        "email": "Read email address",
-        "profile": "Read user profile",
+        "openid": "OpenID",
+        "email": "Email",
+        "profile": "Profile",
     },
 )
 
@@ -71,8 +79,25 @@ async def get_authenticator(
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(reusable_oauth2)],
     verifier: Annotated[TokenVerifier, Depends(get_token_verifier)],
+    bearer_token: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
+    ] = None,
+    oauth2_token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ) -> BaseJWTPayload:
-    """Dependency to retrieve the current user from a JWT."""
+    """
+    Dependency to retrieve the current user from a JWT.
+    Supports both manual Bearer tokens and OAuth2 code flow.
+    """
+    token: str | None = None
+
+    # Priority: Bearer (Manual Header) -> OAuth2 (Swagger Login)
+    if bearer_token:
+        token = bearer_token.credentials
+    elif oauth2_token:
+        token = oauth2_token
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
     return await verifier.verify_token(token)

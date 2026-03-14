@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator, Generator
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -38,9 +38,9 @@ def app_instance() -> Generator[FastAPI, None, None]:
 
     # Mock the state clients before lifespan starts
     app.state.cognito_client = MagicMock()
+    app.state.http_client = AsyncMock()
 
     yield app
-
     app.dependency_overrides.clear()
 
 
