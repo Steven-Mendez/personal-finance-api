@@ -70,7 +70,8 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         description=(
-            "A robust foundation for a Personal Finance Tracking and Budgeting API."
+            "A RESTful API for managing personal finances, tracking expenses, "
+            "and budgeting, built with Python and FastAPI."
         ),
         version="1.0.0",
         openapi_tags=[
