@@ -1,9 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 
-from app.core.config import Settings
-from app.core.dependencies.settings import get_app_settings
+from app.core.schemas.responses import ResponseEnvelope
 
 from .dependencies import get_health_service
 from .logic import HealthServiceInterface
@@ -12,32 +11,40 @@ from .schemas import HealthStatus, ReadinessResponse
 router = APIRouter()
 
 
-@router.get("/")
-def read_root(
-    settings: Annotated[Settings, Depends(get_app_settings)],
+@router.get("/", response_model=ResponseEnvelope[dict[str, str]])
+async def read_root() -> ResponseEnvelope[dict[str, str]]:
+    """Root endpoint providing basic service identification."""
+    return ResponseEnvelope(data={"message": "Personal Finance API", "version": "v1"})
+
+
+@router.get("/live", response_model=ResponseEnvelope[HealthStatus])
+async def liveness_check(
     health_service: Annotated[HealthServiceInterface, Depends(get_health_service)],
-) -> dict[str, str]:
-    return {
-        "message": settings.app_name,
-        "environment": settings.environment,
-        "status": health_service.build_liveness_payload().status,
-    }
+) -> ResponseEnvelope[HealthStatus]:
+    """Endpoint for load balancers to verify the service is running."""
+    return ResponseEnvelope(data=health_service.build_liveness_payload())
 
 
-@router.get("/health/live", status_code=status.HTTP_200_OK, response_model=HealthStatus)
-def read_liveness_health(
+@router.get("/ready", response_model=ResponseEnvelope[ReadinessResponse])
+async def readiness_check(
     health_service: Annotated[HealthServiceInterface, Depends(get_health_service)],
-) -> HealthStatus:
-    return health_service.build_liveness_payload()
-
-
-@router.get("/health/ready", response_model=ReadinessResponse)
-async def read_readiness_health(
-    response: Response,
-    health_service: Annotated[HealthServiceInterface, Depends(get_health_service)],
-) -> ReadinessResponse:
+) -> Any:
+    """Endpoint to verify the service and its dependencies are ready."""
     dependencies = await health_service.check_dependencies()
     payload = health_service.build_readiness_payload(dependencies)
-    if payload.status == "unready":
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    return payload
+
+    status_code = (
+        status.HTTP_200_OK
+        if payload.status == "ready"
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    # Note: ResponseEnvelope handles the wrapping, status_code is for the HTTP level
+    # We need to return JSONResponse if we want custom status code WITH the model
+    from fastapi.responses import JSONResponse
+
+    envelope = ResponseEnvelope(data=payload)
+    return JSONResponse(
+        status_code=status_code,
+        content=envelope.model_dump(mode="json"),
+    )

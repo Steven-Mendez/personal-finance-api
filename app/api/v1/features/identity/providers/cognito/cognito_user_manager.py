@@ -1,17 +1,18 @@
-from typing import Any, cast
+from typing import Any
 
 from botocore.exceptions import ClientError
 from structlog.stdlib import BoundLogger
 
+from app.api.v1.features.identity.exceptions import UserManagementError
+from app.api.v1.features.identity.logic import UserManager
+from app.api.v1.features.identity.schemas import UserResponse
 from app.core.config import Settings
-
-from ...exceptions import UserManagementError
-from ...logic import UserManager
 
 
 class CognitoUserManager(UserManager):
     """
-    Cognito implementation for user management.
+    Cognito-based implementation of the UserManager interface.
+    Handles user creation and listing via AWS Cognito.
     """
 
     def __init__(
@@ -24,9 +25,7 @@ class CognitoUserManager(UserManager):
         self.logger = logger
         self.cognito_client = cognito_client
 
-    async def create_user(self, email: str, password: str) -> dict[str, Any]:
-        """Create a user in Cognito User Pool."""
-        self.logger.info("Creating new Cognito user", email=email)
+    async def create_user(self, email: str, password: str) -> UserResponse:
         try:
             response = self.cognito_client.admin_create_user(
                 UserPoolId=self.settings.cognito_user_pool_id,
@@ -38,33 +37,42 @@ class CognitoUserManager(UserManager):
                 TemporaryPassword=password,
                 MessageAction="SUPPRESS",
             )
-            self.logger.info("Cognito user created successfully", email=email)
-            return cast(dict[str, Any], response["User"])
-        except ClientError as e:
-            self.logger.error(
-                "Failed to create user in Cognito",
-                email=email,
-                error=str(e),
+            user_data = response["User"]
+            return UserResponse(
+                Username=user_data["Username"],
+                Attributes=user_data.get("Attributes"),
+                UserCreateDate=user_data.get("UserCreateDate"),
+                UserLastModifiedDate=user_data.get("UserLastModifiedDate"),
+                Enabled=user_data.get("Enabled"),
+                UserStatus=user_data.get("UserStatus"),
             )
-            msg = e.response["Error"]["Message"]
-            raise UserManagementError(f"User creation failed: {msg}") from e
+        except ClientError as e:
+            self.logger.error("Cognito user creation failed", error=str(e))
+            raise UserManagementError(
+                message=e.response["Error"]["Message"],
+                data={"code": e.response["Error"]["Code"]},
+            ) from e
 
-    async def list_users(self) -> list[dict[str, Any]]:
-        """List all users in the configured Cognito User Pool."""
-        self.logger.info(
-            "Listing Cognito users",
-            user_pool_id=self.settings.cognito_user_pool_id,
-        )
+    async def list_users(self) -> list[UserResponse]:
         try:
             response = self.cognito_client.list_users(
                 UserPoolId=self.settings.cognito_user_pool_id,
             )
-            return cast(list[dict[str, Any]], response.get("Users", []))
+            users = response.get("Users", [])
+            return [
+                UserResponse(
+                    Username=u["Username"],
+                    Attributes=u.get("Attributes"),
+                    UserCreateDate=u.get("UserCreateDate"),
+                    UserLastModifiedDate=u.get("UserLastModifiedDate"),
+                    Enabled=u.get("Enabled"),
+                    UserStatus=u.get("UserStatus"),
+                )
+                for u in users
+            ]
         except ClientError as e:
-            self.logger.error(
-                "Failed to list users from Cognito",
-                user_pool_id=self.settings.cognito_user_pool_id,
-                error=str(e),
-            )
-            msg = e.response["Error"]["Message"]
-            raise UserManagementError(f"Listing users failed: {msg}") from e
+            self.logger.error("Cognito user listing failed", error=str(e))
+            raise UserManagementError(
+                message=e.response["Error"]["Message"],
+                data={"code": e.response["Error"]["Code"]},
+            ) from e

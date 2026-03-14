@@ -1,17 +1,18 @@
-from typing import Any, cast
+from typing import Any
 
 from botocore.exceptions import ClientError
 from structlog.stdlib import BoundLogger
 
+from app.api.v1.features.identity.exceptions import AuthenticationError
+from app.api.v1.features.identity.logic import Authenticator
+from app.api.v1.features.identity.schemas import TokenResponse
 from app.core.config import Settings
-
-from ...exceptions import AuthenticationError
-from ...logic import Authenticator
 
 
 class CognitoAuthenticator(Authenticator):
     """
-    Cognito implementation for user authentication.
+    Cognito-based implementation of the Authenticator interface.
+    Handles user login via AWS Cognito.
     """
 
     def __init__(
@@ -24,25 +25,27 @@ class CognitoAuthenticator(Authenticator):
         self.logger = logger
         self.cognito_client = cognito_client
 
-    async def login(self, email: str, password: str) -> dict[str, Any]:
-        """Authenticate a user and return tokens."""
-        self.logger.info("Authenticating user", email=email)
+    async def login(self, email: str, password: str) -> TokenResponse:
         try:
             response = self.cognito_client.initiate_auth(
-                ClientId=self.settings.cognito_app_client_id,
                 AuthFlow="USER_PASSWORD_AUTH",
                 AuthParameters={
                     "USERNAME": email,
                     "PASSWORD": password,
                 },
+                ClientId=self.settings.cognito_app_client_id,
             )
-            self.logger.info("User authenticated successfully", email=email)
-            return cast(dict[str, Any], response["AuthenticationResult"])
+            auth_result = response["AuthenticationResult"]
+            return TokenResponse(
+                AccessToken=auth_result["AccessToken"],
+                IdToken=auth_result["IdToken"],
+                RefreshToken=auth_result["RefreshToken"],
+                ExpiresIn=auth_result["ExpiresIn"],
+                TokenType=auth_result["TokenType"],
+            )
         except ClientError as e:
-            self.logger.error(
-                "Failed to authenticate user in Cognito",
-                email=email,
-                error=str(e),
-            )
-            msg = e.response["Error"]["Message"]
-            raise AuthenticationError(f"Authentication failed: {msg}") from e
+            self.logger.error("Cognito login failed", error=str(e))
+            raise AuthenticationError(
+                message=e.response["Error"]["Message"],
+                data={"code": e.response["Error"]["Code"]},
+            ) from e

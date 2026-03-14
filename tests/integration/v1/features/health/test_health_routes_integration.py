@@ -16,9 +16,10 @@ def test_liveness_route_returns_alive(client: TestClient) -> None:
 
     # Then
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "alive"
-    assert "version" in data
+    envelope = response.json()
+    assert envelope["status"] == "success"
+    assert envelope["data"]["status"] == "alive"
+    assert "version" in envelope["data"]
 
 
 @pytest.mark.integration
@@ -43,7 +44,9 @@ def test_readiness_route_returns_ready_when_health_check_passes(
 
         # Then
         assert response.status_code == 200
-        assert response.json() == {
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        assert envelope["data"] == {
             "status": "ready",
             "dependencies": {"api": "healthy", "cognito": "healthy"},
         }
@@ -73,7 +76,9 @@ def test_readiness_route_returns_503_when_health_check_fails(
 
         # Then
         assert response.status_code == 503
-        payload = response.json()
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        payload = envelope["data"]
         assert payload["status"] == "unready"
         assert payload["dependencies"] == {"api": "unhealthy", "cognito": "healthy"}
     finally:

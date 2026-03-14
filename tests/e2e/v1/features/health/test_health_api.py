@@ -16,9 +16,10 @@ def test_liveness_endpoint_returns_alive(client: TestClient) -> None:
 
     # Then
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "alive"
-    assert "version" in data
+    envelope = response.json()
+    assert envelope["status"] == "success"
+    assert envelope["data"]["status"] == "alive"
+    assert "version" in envelope["data"]
 
 
 @pytest.mark.e2e
@@ -43,7 +44,9 @@ def test_readiness_endpoint_returns_ready_when_dependencies_healthy(
 
         # Then
         assert response.status_code == 200
-        payload = response.json()
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        payload = envelope["data"]
         assert payload["status"] == "ready"
         assert payload["dependencies"] == {"api": "healthy", "cognito": "healthy"}
     finally:
@@ -61,7 +64,9 @@ def test_readiness_endpoint_returns_503_when_dependencies_unhealthy(
 
     # Then
     assert response.status_code == 503
-    payload = response.json()
+    envelope = response.json()
+    assert envelope["status"] == "success"  # The request succeeded, even if unready
+    payload = envelope["data"]
     assert payload["status"] == "unready"
     assert payload["dependencies"] == {"api": "unhealthy", "cognito": "unhealthy"}
 
@@ -71,14 +76,16 @@ def test_root_endpoint_returns_service_metadata(client: TestClient) -> None:
     # Given: the app is configured with environment="test"
 
     # When
-    response = client.get("/api/v1/")
+    # Note: v1/router.py prefix is /health, and feature route is /
+    response = client.get("/api/v1/health/")
 
     # Then
     assert response.status_code == 200
-    payload = response.json()
+    envelope = response.json()
+    assert envelope["status"] == "success"
+    payload = envelope["data"]
     assert payload["message"] == "Personal Finance API"
-    assert payload["environment"] == "test"
-    assert "status" in payload
+    assert payload["version"] == "v1"
 
 
 @pytest.mark.e2e

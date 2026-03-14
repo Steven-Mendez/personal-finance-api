@@ -32,19 +32,18 @@ def test_get_me_success(client: TestClient) -> None:
             "/api/v1/auth/me", headers={"Authorization": "Bearer some_token"}
         )
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == {"user": {"sub": "test_user_id"}}
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        assert envelope["data"] == {"sub": "test_user_id"}
     finally:
         client.app.dependency_overrides.clear()
 
 
 def test_get_me_invalid_token(client: TestClient) -> None:
-    # We don't need to override dependency here if we want to test the actual flow
-    # but that would require a real JWT and mocking JWKS.
-    # For a simple E2E that tests the wiring:
     def mock_get_current_user():
-        from fastapi import HTTPException
+        from app.api.v1.features.identity.exceptions import InvalidTokenError
 
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise InvalidTokenError("Invalid token")
 
     client.app.dependency_overrides[get_current_user] = mock_get_current_user
 
@@ -53,13 +52,21 @@ def test_get_me_invalid_token(client: TestClient) -> None:
             "/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token"}
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert response.json()["detail"] == "Invalid token"
+        envelope = response.json()
+        assert envelope["status"] == "error"
+        assert envelope["error"]["message"] == "Invalid token"
     finally:
         client.app.dependency_overrides.clear()
 
 
 def test_login_success(client: TestClient) -> None:
-    mock_tokens = {"AccessToken": "access", "IdToken": "id", "RefreshToken": "refresh"}
+    mock_tokens = {
+        "AccessToken": "access",
+        "IdToken": "id",
+        "RefreshToken": "refresh",
+        "ExpiresIn": 3600,
+        "TokenType": "Bearer",
+    }
 
     mock_authenticator = AsyncMock()
     mock_authenticator.login.return_value = mock_tokens
@@ -72,7 +79,9 @@ def test_login_success(client: TestClient) -> None:
             json={"email": "test@example.com", "password": "Password123!"},
         )
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == mock_tokens
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        assert envelope["data"] == mock_tokens
     finally:
         client.app.dependency_overrides.clear()
 
@@ -91,7 +100,9 @@ def test_create_user_success(client: TestClient) -> None:
             json={"email": "test@example.com", "password": "Password123!"},
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.json() == {"user": mock_user}
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        assert envelope["data"]["Username"] == mock_user["Username"]
     finally:
         client.app.dependency_overrides.clear()
 
@@ -110,6 +121,8 @@ def test_list_users_success(client: TestClient) -> None:
             "/api/v1/auth/users", headers={"Authorization": "Bearer some_token"}
         )
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == {"users": mock_users}
+        envelope = response.json()
+        assert envelope["status"] == "success"
+        assert envelope["data"]["users"][0]["Username"] == mock_users[0]["Username"]
     finally:
         client.app.dependency_overrides.clear()
