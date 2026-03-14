@@ -33,9 +33,24 @@ markers = [
 [tool.coverage.run]
 source = ["app"]
 branch = true
+omit = [
+    "app/main.py",
+    "app/core/config.py",
+    "app/core/logging_config.py",
+    "app/**/__init__.py"
+]
 
 [tool.coverage.report]
 show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "class .*\\(Protocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
 
 [tool.ruff]
 line-length = 88
