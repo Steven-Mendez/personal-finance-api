@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Literal
 
 import httpx
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from structlog.stdlib import BoundLogger
 
 from .schemas import HealthStatus, ReadinessResponse, StatusLiteral
@@ -35,6 +37,21 @@ class ApiHealthCheck(HealthCheck):
         # In a real app, this could check if the local server can make outbound calls
         # or ping a local resource. For now, it's a heartbeat.
         return "api", "healthy"
+
+
+class DatabaseHealthCheck(HealthCheck):
+    """Check to confirm the Database is reachable."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def check(self) -> tuple[str, StatusLiteral]:
+        try:
+            # Execute a simple query to ensure the database is responsive
+            await self.session.execute(text("SELECT 1"))
+            return "database", "healthy"
+        except Exception:
+            return "database", "unhealthy"
 
 
 class CognitoHealthCheck(HealthCheck):
@@ -88,10 +105,12 @@ class DefaultHealthService(HealthServiceInterface):
     def __init__(
         self,
         api_check: ApiHealthCheck,
+        db_check: DatabaseHealthCheck,
         cognito_check: CognitoHealthCheck,
         logger: BoundLogger,
     ) -> None:
         self.api_check = api_check
+        self.db_check = db_check
         self.cognito_check = cognito_check
         self.logger = logger
 
@@ -116,6 +135,7 @@ class DefaultHealthService(HealthServiceInterface):
         # Run checks concurrently
         results = await asyncio.gather(
             self.api_check.check(),
+            self.db_check.check(),
             self.cognito_check.check(),
             return_exceptions=True,
         )

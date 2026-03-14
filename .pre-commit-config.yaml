@@ -28,3 +28,4 @@ repos:
           - httpx
           - structlog
           - boto3
+          - slowapi

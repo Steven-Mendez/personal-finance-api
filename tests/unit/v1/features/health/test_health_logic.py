@@ -5,6 +5,7 @@ import pytest
 from app.api.v1.features.health.logic import (
     ApiHealthCheck,
     CognitoHealthCheck,
+    DatabaseHealthCheck,
     DefaultHealthService,
 )
 from app.api.v1.features.health.schemas import HealthStatus, ReadinessResponse
@@ -18,6 +19,26 @@ class TestApiHealthCheck:
         name, status = await check.check()
         assert name == "api"
         assert status == "healthy"
+
+
+class TestDatabaseHealthCheck:
+    @pytest.mark.asyncio
+    async def test_check_returns_healthy(self) -> None:
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock(return_value=True)
+        check = DatabaseHealthCheck(mock_session)
+        name, status = await check.check()
+        assert name == "database"
+        assert status == "healthy"
+
+    @pytest.mark.asyncio
+    async def test_check_returns_unhealthy_on_exception(self) -> None:
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock(side_effect=Exception("DB Down"))
+        check = DatabaseHealthCheck(mock_session)
+        name, status = await check.check()
+        assert name == "database"
+        assert status == "unhealthy"
 
 
 class TestCognitoHealthCheck:
@@ -57,6 +78,12 @@ class TestDefaultHealthService:
         return check
 
     @pytest.fixture
+    def mock_db_check(self) -> MagicMock:
+        check = MagicMock(spec=DatabaseHealthCheck)
+        check.check = AsyncMock(return_value=("database", "healthy"))
+        return check
+
+    @pytest.fixture
     def mock_cognito_check(self) -> MagicMock:
         check = MagicMock(spec=CognitoHealthCheck)
         check.check = AsyncMock(return_value=("cognito", "healthy"))
@@ -64,10 +91,14 @@ class TestDefaultHealthService:
 
     @pytest.fixture
     def health_service(
-        self, mock_api_check: MagicMock, mock_cognito_check: MagicMock
+        self,
+        mock_api_check: MagicMock,
+        mock_db_check: MagicMock,
+        mock_cognito_check: MagicMock,
     ) -> DefaultHealthService:
         return DefaultHealthService(
             api_check=mock_api_check,
+            db_check=mock_db_check,
             cognito_check=mock_cognito_check,
             logger=MagicMock(),
         )
@@ -82,10 +113,26 @@ class TestDefaultHealthService:
     @pytest.mark.parametrize(
         "dependencies, expected_status",
         [
-            ({"api": "healthy", "cognito": "healthy"}, "ready"),
-            ({"api": "unhealthy", "cognito": "healthy"}, "unready"),
-            ({"api": "healthy", "cognito": "unhealthy"}, "unready"),
-            ({"api": "unhealthy", "cognito": "unhealthy"}, "unready"),
+            (
+                {"api": "healthy", "database": "healthy", "cognito": "healthy"},
+                "ready",
+            ),
+            (
+                {"api": "unhealthy", "database": "healthy", "cognito": "healthy"},
+                "unready",
+            ),
+            (
+                {"api": "healthy", "database": "unhealthy", "cognito": "healthy"},
+                "unready",
+            ),
+            (
+                {"api": "healthy", "database": "healthy", "cognito": "unhealthy"},
+                "unready",
+            ),
+            (
+                {"api": "unhealthy", "database": "unhealthy", "cognito": "unhealthy"},
+                "unready",
+            ),
         ],
     )
     def test_build_readiness_payload_derives_status_from_dependencies(
@@ -104,4 +151,5 @@ class TestDefaultHealthService:
         self, health_service: DefaultHealthService
     ) -> None:
         results = await health_service.check_dependencies()
-        assert results == {"api": "healthy", "cognito": "healthy"}
+        expected = {"api": "healthy", "database": "healthy", "cognito": "healthy"}
+        assert results == expected

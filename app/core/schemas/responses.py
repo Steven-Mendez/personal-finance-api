@@ -19,3 +19,20 @@ class ResponseEnvelope(BaseModel, Generic[DataT]):
     status: Literal["success", "error"] = "success"
     data: DataT
     metadata: ResponseMetadata = Field(default_factory=ResponseMetadata)
+
+
+class PaginationMetadata(BaseModel):
+    """Metadata specific to paginated responses."""
+
+    total_items: int
+    limit: int
+    offset: int
+
+
+class PaginatedResponseEnvelope(BaseModel, Generic[DataT]):
+    """Standardized API response envelope for lists of items."""
+
+    status: Literal["success", "error"] = "success"
+    data: list[DataT]
+    pagination: PaginationMetadata
+    metadata: ResponseMetadata = Field(default_factory=ResponseMetadata)
