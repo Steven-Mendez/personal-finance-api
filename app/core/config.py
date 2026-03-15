@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> SecretStr:
-        """Construct the full SQLAlchemy database URL from components."""
+        """Build the SQLAlchemy database URL from db_* components."""
         return SecretStr(
             f"postgresql+asyncpg://{self.db_user}:"
             f"{self.db_password.get_secret_value()}@{self.db_host}:"

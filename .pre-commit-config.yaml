@@ -29,3 +29,5 @@ repos:
           - structlog
           - boto3
           - slowapi
+          - cachetools
+          - types-cachetools

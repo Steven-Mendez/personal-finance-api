@@ -25,7 +25,7 @@ def test_settings_reads_environment_variables(monkeypatch: pytest.MonkeyPatch) -
     assert settings.environment == "test"
 
 
-def test_settings_database_url_property() -> None:
+def test_settings_database_url_built_from_components() -> None:
     # Given
     settings = Settings(
         db_host="test-host",

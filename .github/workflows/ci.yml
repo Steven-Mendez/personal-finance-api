@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
 
     services:
       postgres:
@@ -53,12 +53,9 @@ jobs:
 
     - name: Run database migration check
       run: make db-migrate
-      env:
-        DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/finance
 
-    - name: Run tests
-      run: make test-all
+    - name: Run tests with coverage
+      run: make test-cov
       env:
-        DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/finance
         COGNITO_USER_POOL_ID: us-east-1_example
         COGNITO_APP_CLIENT_ID: example_client_id

@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 import httpx
+from cachetools import TTLCache
 from jose import jwk, jwt
 from jose.utils import base64url_decode
 from structlog.stdlib import BoundLogger
@@ -11,11 +12,15 @@ from ...exceptions import InvalidTokenError
 from ...logic import TokenVerifier
 from ...schemas import BaseJWTPayload
 
+# Shared JWKS cache: keyed by JWKS URL, 1-hour TTL, supports multiple Cognito pools
+JWKS_CACHE: TTLCache[str, dict[str, Any]] = TTLCache(maxsize=10, ttl=3600)
+
 
 class CognitoTokenVerifier(TokenVerifier):
     """
     Cognito implementation for token verification.
     Focuses solely on verifying JWT tokens against Cognito JWKS.
+    Uses a shared TTL cache to avoid refetching JWKS on every request.
     """
 
     def __init__(
@@ -23,23 +28,29 @@ class CognitoTokenVerifier(TokenVerifier):
         settings: Settings,
         logger: BoundLogger,
         http_client: httpx.AsyncClient,
+        jwks_cache: TTLCache[str, dict[str, Any]] | None = None,
     ) -> None:
         self.settings = settings
         self.logger = logger
         self.http_client = http_client
-        self._jwks: dict[str, Any] | None = None
+        self._jwks_cache = jwks_cache or JWKS_CACHE
 
     async def _get_jwks(self) -> dict[str, Any]:
-        """Fetch and cache JWKS keys from Cognito."""
-        if self._jwks is None:
-            self.logger.info(
-                "Fetching Cognito JWKS keys",
-                jwks_url=self.settings.cognito_jwks_url,
-            )
-            response = await self.http_client.get(self.settings.cognito_jwks_url)
-            response.raise_for_status()
-            self._jwks = cast(dict[str, Any], response.json())
-        return self._jwks
+        """Fetch JWKS from Cognito, using cache on hit."""
+        jwks_url = self.settings.cognito_jwks_url
+        cached = self._jwks_cache.get(jwks_url)
+        if cached is not None:
+            return cached
+
+        self.logger.info(
+            "Fetching Cognito JWKS keys",
+            jwks_url=jwks_url,
+        )
+        response = await self.http_client.get(jwks_url)
+        response.raise_for_status()
+        jwks = cast(dict[str, Any], response.json())
+        self._jwks_cache[jwks_url] = jwks
+        return jwks
 
     async def verify_token(self, token: str) -> BaseJWTPayload:
         """Verify token signature and claims against Cognito."""

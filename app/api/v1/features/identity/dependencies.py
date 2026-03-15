@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
 import httpx
+from cachetools import TTLCache
 from fastapi import Depends, HTTPException
 from fastapi.security import (
     HTTPAuthorizationCredentials,
@@ -13,11 +14,13 @@ from app.core.config import Settings, get_settings
 from app.core.dependencies.cognito import get_cognito_client
 from app.core.dependencies.http import get_http_client
 from app.core.dependencies.logging import get_logger
-from app.core.dependencies.settings import get_app_settings
 
 from .logic import Authenticator, TokenVerifier, UserManager
 from .providers.cognito.cognito_authenticator import CognitoAuthenticator
-from .providers.cognito.cognito_token_verifier import CognitoTokenVerifier
+from .providers.cognito.cognito_token_verifier import (
+    JWKS_CACHE,
+    CognitoTokenVerifier,
+)
 from .providers.cognito.cognito_user_manager import CognitoUserManager
 from .schemas import BaseJWTPayload
 
@@ -43,21 +46,28 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 oauth2_scheme.scheme_name = "2. Cognito Login"
 
 
+def get_jwks_cache() -> TTLCache[str, dict[str, Any]]:
+    """Dependency that provides the shared JWKS cache (1-hour TTL)."""
+    return JWKS_CACHE
+
+
 async def get_token_verifier(
-    settings: Annotated[Settings, Depends(get_app_settings)],
+    settings: Annotated[Settings, Depends(get_settings)],
     logger: Annotated[BoundLogger, Depends(get_logger)],
     http_client: Annotated[httpx.AsyncClient, Depends(get_http_client)],
+    jwks_cache: Annotated[TTLCache[str, dict[str, Any]], Depends(get_jwks_cache)],
 ) -> TokenVerifier:
     """Dependency that provides a TokenVerifier interface."""
     return CognitoTokenVerifier(
         settings=settings,
         logger=logger,
         http_client=http_client,
+        jwks_cache=jwks_cache,
     )
 
 
 async def get_user_manager(
-    settings: Annotated[Settings, Depends(get_app_settings)],
+    settings: Annotated[Settings, Depends(get_settings)],
     logger: Annotated[BoundLogger, Depends(get_logger)],
     cognito_client: Annotated[Any, Depends(get_cognito_client)],
 ) -> UserManager:
@@ -70,7 +80,7 @@ async def get_user_manager(
 
 
 async def get_authenticator(
-    settings: Annotated[Settings, Depends(get_app_settings)],
+    settings: Annotated[Settings, Depends(get_settings)],
     logger: Annotated[BoundLogger, Depends(get_logger)],
     cognito_client: Annotated[Any, Depends(get_cognito_client)],
 ) -> Authenticator:

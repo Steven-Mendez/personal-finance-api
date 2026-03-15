@@ -7,15 +7,14 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.features.health.dependencies import get_health_service
 from app.api.v1.features.health.schemas import ReadinessResponse
-from app.core.config import Settings
-from app.core.dependencies.settings import get_app_settings
+from app.core.config import Settings, get_settings
 from app.main import create_app
 
 
 @pytest.fixture(scope="function")
 def app() -> Generator[FastAPI, None, None]:
     _app = create_app()
-    _app.dependency_overrides[get_app_settings] = lambda: Settings(
+    _app.dependency_overrides[get_settings] = lambda: Settings(
         environment="test",
         cognito_user_pool_id="us-east-1_test",
         cognito_app_client_id="test-client-id",

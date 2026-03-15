@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from cachetools import TTLCache
 
 from app.api.v1.features.identity.exceptions import InvalidTokenError
 from app.api.v1.features.identity.providers.cognito.cognito_authenticator import (
@@ -69,7 +70,10 @@ class TestCognitoTokenVerifier:
         http_client: AsyncMock,
         mock_jwks: dict,
     ) -> None:
-        verifier = CognitoTokenVerifier(settings, logger, http_client)
+        # Use fresh cache per test to avoid cross-test pollution
+        verifier = CognitoTokenVerifier(
+            settings, logger, http_client, jwks_cache=TTLCache(maxsize=10, ttl=3600)
+        )
         mock_response = MagicMock()
         mock_response.json.return_value = mock_jwks
         http_client.get.return_value = mock_response
@@ -77,6 +81,11 @@ class TestCognitoTokenVerifier:
         jwks = await verifier._get_jwks()
 
         assert jwks == mock_jwks
+        http_client.get.assert_called_once_with(settings.cognito_jwks_url)
+
+        # Second call should use cache, no additional HTTP request
+        jwks2 = await verifier._get_jwks()
+        assert jwks2 == mock_jwks
         http_client.get.assert_called_once_with(settings.cognito_jwks_url)
 
     @pytest.mark.asyncio
@@ -87,7 +96,9 @@ class TestCognitoTokenVerifier:
         http_client: AsyncMock,
         mock_jwks: dict,
     ) -> None:
-        verifier = CognitoTokenVerifier(settings, logger, http_client)
+        verifier = CognitoTokenVerifier(
+            settings, logger, http_client, jwks_cache=TTLCache(maxsize=10, ttl=3600)
+        )
         # Use a valid base64-url encoded string for the signature (e.g., 'sig')
         token = "header.payload.c2ln"
         claims = {
@@ -126,7 +137,9 @@ class TestCognitoTokenVerifier:
         http_client: AsyncMock,
         mock_jwks: dict,
     ) -> None:
-        verifier = CognitoTokenVerifier(settings, logger, http_client)
+        verifier = CognitoTokenVerifier(
+            settings, logger, http_client, jwks_cache=TTLCache(maxsize=10, ttl=3600)
+        )
         token = "header.payload.c2ln"
 
         with (

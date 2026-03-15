@@ -115,7 +115,7 @@ test-all:
 	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS)
 
 test-cov:
-	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS) --cov
+	$(UV_RUN) pytest $(PYTEST_FLAGS) $(ALL_TEST_ARGS) --cov --cov-fail-under=80
 
 docker-build:
 	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
