@@ -65,7 +65,7 @@ exclude_lines = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
@@ -75,7 +75,7 @@ ignore = []
 known-first-party = ["app"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 ignore_missing_imports = true
 exclude = ["tests/", "venv/", ".venv/"]
